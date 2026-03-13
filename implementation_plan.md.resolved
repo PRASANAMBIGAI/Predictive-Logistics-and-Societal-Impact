@@ -1,0 +1,129 @@
+# Predictive Logistics Orchestrator MVP — Implementation Plan
+
+## Project Overview
+Build a hackathon MVP: an AI-driven logistics dashboard that predicts delivery delays in real-time using traffic, weather, and warehouse metrics. Stack: Firebase Firestore, Python ML (scikit-learn), Leaflet.js, vanilla JS.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Firebase credentials:** The project uses `firebase-admin` (Python) and the Firebase JS SDK (frontend). You must supply:
+> 1. A **service account key** (`credentials.json`) in the project root for the Python backend/worker/simulator.
+> 2. Your **Firebase web app config** (apiKey, authDomain, projectId, etc.) — I will place a placeholder in the frontend `app.js` that you need to fill in.
+>
+> Without these, the app will scaffold correctly but won't connect to Firebase.
+
+> [!NOTE]
+> The ML pipeline generates **synthetic** training data and trains a local model (`model.pkl`). No real dataset is required. The model is intentionally simple (Random Forest) for fast inference.
+
+---
+
+## Proposed Changes
+
+### Project Scaffolding
+
+#### [NEW] [.gitignore](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/.gitignore)
+Standard Python `.gitignore` + `credentials.json`, `model.pkl`, `__pycache__`, `venv/`, `node_modules/`.
+
+#### [NEW] [requirements.txt](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/requirements.txt)
+Dependencies: `firebase-admin`, `scikit-learn`, `pandas`, `numpy`, `joblib`, `fastapi`, `uvicorn`, `geopy`.
+
+#### [NEW] [README.md](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/README.md)
+Setup and run instructions for all components.
+
+---
+
+### Shared Configuration
+
+#### [NEW] [firebase_config.py](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/firebase_config.py)
+Initializes `firebase_admin` from `credentials.json` and exports a shared `db` (Firestore client). All Python modules import from here.
+
+---
+
+### ML Pipeline
+
+#### [NEW] [ml_pipeline/generate_mock_data.py](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/ml_pipeline/generate_mock_data.py)
+- Generates **1,000 rows** of synthetic logistics data as CSV.
+- Features: `current_speed_kmh`, `weather_condition`, `traffic_index`, `warehouse_backlog_index`, `distance_remaining`.
+- Targets: `is_delayed` (bool), `delay_minutes` (int).
+- Correlation logic: high traffic + bad weather + high backlog → high delay probability.
+- Output: `ml_pipeline/training_data.csv`.
+
+#### [NEW] [ml_pipeline/train_model.py](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/ml_pipeline/train_model.py)
+- Reads CSV, one-hot-encodes `weather_condition`.
+- Trains a `RandomForestClassifier` (delay probability) and `RandomForestRegressor` (delay minutes).
+- Saves both as a single dict in `ml_pipeline/model.pkl` using joblib.
+- Prints accuracy/MAE metrics on a test split.
+
+---
+
+### Backend
+
+#### [NEW] [backend/seed_firestore.py](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/backend/seed_firestore.py)
+- Populates Firestore `shipments` collection with 5 demo shipments (New Delhi region routes).
+- Populates `live_tracking` collection with initial positions matching each shipment.
+
+#### [NEW] [backend/ml_worker.py](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/backend/ml_worker.py)
+- Loads `model.pkl`.
+- Uses `on_snapshot()` to listen to the `live_tracking` collection.
+- On every change: extracts features, calculates `distance_remaining` (haversine), runs inference, writes `ml_delay_probability` and `ml_estimated_delay_mins` back to the document.
+
+#### [NEW] [backend/api.py](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/backend/api.py)
+- FastAPI app with `POST /api/trigger_storm/{shipment_id}`.
+- Sets `weather_condition = 'Storm'` and `traffic_index = 10` in Firestore for the given shipment.
+- Allows judges to trigger a dramatic demo scenario.
+
+---
+
+### Simulation
+
+#### [NEW] [simulation/simulator.py](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/simulation/simulator.py)
+- `while True` loop with `time.sleep(3)`.
+- Moves each active shipment's `current_lat`/`current_lng` toward destination.
+- Randomly fluctuates `current_speed_kmh`, `traffic_index`, and occasionally `weather_condition`.
+- Updates `live_tracking` documents via `doc_ref.update()`.
+
+---
+
+### Frontend Dashboard
+
+#### [NEW] [frontend/index.html](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/frontend/index.html)
+- Single-page app: loads Leaflet.js (CDN), Firebase JS SDK (CDN), `style.css`, `app.js`.
+- Contains map container, control panel with "Simulate Severe Storm" button, and a shipment info sidebar.
+
+#### [NEW] [frontend/style.css](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/frontend/style.css)
+- Premium dark theme with glassmorphism control panel.
+- Smooth animations for marker status changes and panel interactions.
+- Responsive layout; full-screen map with floating overlays.
+
+#### [NEW] [frontend/app.js](file:///c:/Users/ASUS/Predictive%20Logistics%20and%20Societal%20Impact/frontend/app.js)
+- Initializes Firebase with placeholder config (user fills in).
+- Creates Leaflet map centered on New Delhi.
+- `onSnapshot()` listener on `live_tracking` — creates/updates color-coded markers (green/yellow/red based on delay probability thresholds).
+- Marker click → tooltip with Shipment ID, ETA delay, explainability factors.
+- "Simulate Storm" button calls the FastAPI endpoint.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. **ML pipeline smoke test** — Run `generate_mock_data.py` then `train_model.py` and verify:
+   - `training_data.csv` is created with 1,000 rows.
+   - `model.pkl` is created and loads successfully.
+   - Reported accuracy > 60% (synthetic data should be easily separable).
+   ```
+   cd "c:\Users\ASUS\Predictive Logistics and Societal Impact"
+   python ml_pipeline/generate_mock_data.py
+   python ml_pipeline/train_model.py
+   ```
+
+2. **Frontend lint check** — Open `frontend/index.html` in a browser via the browser tool and verify no console errors (aside from Firebase config placeholder).
+
+### Manual Verification (requires Firebase credentials)
+1. Place your `credentials.json` in the project root.
+2. Fill in Firebase JS config in `frontend/app.js`.
+3. Run `python backend/seed_firestore.py` — verify documents appear in Firestore console.
+4. Run `python backend/ml_worker.py` in one terminal.
+5. Run `python simulation/simulator.py` in another terminal.
+6. Open `frontend/index.html` in a browser — verify live-updating markers on the map.
+7. Click **"Simulate Severe Storm"** — verify a marker turns red and delay probability jumps.

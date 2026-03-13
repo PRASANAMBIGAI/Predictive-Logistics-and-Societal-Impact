@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+venv/
+env/
+.venv/
+
+# ML artifacts
+ml_pipeline/model.pkl
+ml_pipeline/training_data.csv
+
+# Firebase
+credentials.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Node (if any)
+node_modules/

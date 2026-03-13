@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication | LogiPredict AI</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Auth CSS -->
+    <link rel="stylesheet" href="css/auth.css">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <!-- Theme Toggle -->
+    <button class="auth-theme-toggle theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+        <i class="fa-solid fa-sun icon-sun"></i>
+        <i class="fa-solid fa-moon icon-moon"></i>
+    </button>
+
+    <div class="auth-container">
+
+        <div class="logo-header">
+            <a href="index.html" style="text-decoration:none;">
+                <i class="fa-solid fa-cube"></i>
+                <h1 style="color: white;">LOGIPREDICT AI</h1>
+            </a>
+        </div>
+
+        <div class="auth-card">
+
+            <!-- Role Selector -->
+            <div class="role-tabs" id="roleTabs">
+                <button class="role-btn active" data-role="customer">Customer</button>
+                <button class="role-btn" data-role="driver">Driver</button>
+                <button class="role-btn" data-role="dispatcher">Dispatcher</button>
+                <button class="role-btn" data-role="merchant">Merchant</button>
+                <button class="role-btn" data-role="admin">Sys Admin</button>
+            </div>
+
+            <div class="forms-wrapper">
+
+                <!-- 1. CUSTOMER PORTAL -->
+                <div class="form-section active" id="form-customer">
+                    <div class="form-header">
+                        <h2>Track Your Delivery</h2>
+                        <p>Enter your details to see your live spatial ETA.</p>
+                    </div>
+
+                    <div class="customer-tabs">
+                        <button class="cust-tab-btn active" onclick="switchCustomerTab('login')">Magic Link</button>
+                        <button class="cust-tab-btn" onclick="switchCustomerTab('register')">Register Profile</button>
+                    </div>
+
+                    <!-- Customer Login -->
+                    <div id="cust-login">
+                        <form onsubmit="event.preventDefault(); window.location.href='dashboard-customer.html';">
+                            <div class="form-group">
+                                <label>Mobile Number or Email Address</label>
+                                <input type="text" class="form-control"
+                                    placeholder="e.g. name@domain.com or +1234567890">
+                            </div>
+                            <button type="submit" class="btn-primary">Send Magic Login Link</button>
+                        </form>
+                    </div>
+
+                    <!-- Customer Register -->
+                    <div id="cust-register" style="display: none;">
+                        <form onsubmit="event.preventDefault(); window.location.href='dashboard-customer.html';">
+                            <div class="form-group">
+                                <label>Full Name</label>
+                                <input type="text" class="form-control" placeholder="Jane Doe">
+                            </div>
+                            <div class="form-group">
+                                <label>Proximity Alert Radius</label>
+                                <select class="form-control">
+                                    <option>500m</option>
+                                    <option>1km</option>
+                                    <option>2km</option>
+                                </select>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="whatsappToggle">
+                                <label for="whatsappToggle" style="margin:0;">Use WhatsApp instead of SMS</label>
+                            </div>
+                            <div class="form-group">
+                                <label>Delivery Instructions</label>
+                                <textarea class="form-control" placeholder="e.g., Leave at back gate..."></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary">Create Customer Profile</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 2. DRIVER PORTAL -->
+                <div class="form-section" id="form-driver">
+                    <div class="form-header">
+                        <h2>Driver Console</h2>
+                        <p>Authenticate to begin telemetry sync.</p>
+                    </div>
+                    <form onsubmit="event.preventDefault(); window.location.href='dashboard-driver.html';">
+                        <div class="form-group">
+                            <label>Driver ID / Employee Number</label>
+                            <input type="text" class="form-control" placeholder="DRV-0000">
+                        </div>
+                        <div class="form-group">
+                            <label>Secure PIN</label>
+                            <input type="password" class="form-control" placeholder="****">
+                        </div>
+                        <div class="form-group">
+                            <label>Vehicle License Plate</label>
+                            <select class="form-control">
+                                <option>Select Vehicle...</option>
+                                <option>TRK-A100 (Kenworth T680)</option>
+                                <option>TRK-B200 (Freightliner Cascadia)</option>
+                            </select>
+                        </div>
+                        <div class="form-group checkbox-group" style="align-items: flex-start;">
+                            <input type="checkbox" id="gpsAuth" required>
+                            <label for="gpsAuth" style="margin:0; line-height:1.4;">I confirm I have authorized
+                                Background Location Services.</label>
+                        </div>
+                        <button type="submit" class="btn-primary" style="background:var(--primary); color:white;">Clock
+                            In & Start Shift</button>
+                    </form>
+                </div>
+
+                <!-- 3. DISPATCHER PORTAL -->
+                <div class="form-section" id="form-dispatcher">
+                    <div class="form-header">
+                        <h2>Operations Control Tower</h2>
+                        <p>Enter corporate credentials.</p>
+                    </div>
+                    <form id="dispatcherForm" onsubmit="event.preventDefault(); handleDispatcherAuth();">
+                        <div class="form-group">
+                            <label>Corporate Email Address</label>
+                            <input type="email" class="form-control" placeholder="dispatch@company.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" class="form-control" placeholder="••••••••">
+                        </div>
+                        <div class="form-group" id="dispatchZoneGroup">
+                            <label>Select Monitored Zone</label>
+                            <select class="form-control">
+                                <option>North Hub</option>
+                                <option>South Hub</option>
+                                <option>East Coast Transit</option>
+                                <option>Global Overview</option>
+                            </select>
+                        </div>
+
+                        <div class="mfa-input-group" id="mfaGroup">
+                            <div class="form-group">
+                                <label style="color:#ffaa00;"><i class="fa-solid fa-shield-halved"></i> 2FA
+                                    Required</label>
+                                <input type="text" class="form-control" placeholder="Enter 6-digit Authenticator Code"
+                                    maxlength="6">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary" id="btn-dispatcher">Request MFA Token</button>
+                    </form>
+                </div>
+
+                <!-- 4. MERCHANT / SHIPPER PORTAL -->
+                <div class="form-section" id="form-merchant">
+                    <div class="form-header">
+                        <h2>Merchant Analytics Hub</h2>
+                        <p>Manage your logistics transparency.</p>
+                    </div>
+                    <form onsubmit="event.preventDefault(); window.location.href='dashboard-merchant.html';">
+                        <div class="form-group">
+                            <label>Registered Business Email</label>
+                            <input type="email" class="form-control" placeholder="admin@retailer.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" class="form-control" placeholder="••••••••">
+                        </div>
+                        <div class="form-group">
+                            <label>Business Tax ID / Registration Number</label>
+                            <input type="text" class="form-control" placeholder="(Required for initial signup)">
+                        </div>
+                        <div class="form-group">
+                            <label>Upload Brand Logo</label>
+                            <input type="file" class="form-control" accept="image/*" style="padding: 0.6rem;">
+                            <small style="color:var(--text-muted); display:block; margin-top:5px;">To inject into
+                                Spatial SMS links.</small>
+                        </div>
+                        <button type="submit" class="btn-primary">Log In to Hub</button>
+                        <a href="#" class="text-link">Need to generate API Webhook Keys? Click here.</a>
+                    </form>
+                </div>
+
+                <!-- 5. SYSTEM ADMIN PORTAL -->
+                <div class="form-section" id="form-admin">
+                    <div class="form-header">
+                        <h2>System Architecture Access</h2>
+                        <p style="color:#ff4444;">Restricted to Level 4 Engineering only.</p>
+                    </div>
+                    <form onsubmit="event.preventDefault(); window.location.href='dashboard-admin.html';">
+                        <div class="form-group">
+                            <label>Admin Username</label>
+                            <input type="text" class="form-control" placeholder="root">
+                        </div>
+                        <div class="form-group">
+                            <label>Master Passphrase</label>
+                            <input type="password" class="form-control" placeholder="••••••••••••••••">
+                        </div>
+                        <div class="form-group">
+                            <label>Select Environment</label>
+                            <select class="form-control">
+                                <option>Production - Global</option>
+                                <option>Staging</option>
+                                <option>Testing/Dev</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Hardware Security Key / SSH Token</label>
+                            <input type="password" class="form-control" placeholder="Connect YubiKey or enter token">
+                        </div>
+                        <button type="submit" class="btn-primary" style="background:#ff4444;">Initialize Admin
+                            Session</button>
+                    </form>
+                    <p class="warning-text"><i class="fa-solid fa-triangle-exclamation"></i> All actions in this portal
+                        are logged to the central server.</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Theme JS (must load before other scripts) -->
+    <script src="js/theme.js"></script>
+    <!-- Auth JS -->
+    <script src="js/auth.js"></script>
+</body>
+
+</html>

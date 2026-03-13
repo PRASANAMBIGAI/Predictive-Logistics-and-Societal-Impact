@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Console | LogiPredict AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dashboards.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            overflow-y: auto !important;
+            height: auto !important;
+        }
+
+        /* ── Layout ── */
+        .driver-layout {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 60px);
+            padding: 1.25rem;
+            gap: 1.25rem;
+        }
+
+        /* ── Top Row: Telemetry + Current Objective + Route Queue ── */
+        .top-row {
+            display: grid;
+            grid-template-columns: 300px 1fr 1fr;
+            gap: 1.25rem;
+            min-height: 420px;
+        }
+
+        /* ── Cards ── */
+        .d-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .d-head {
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .d-head i { color: var(--primary); }
+
+        .d-body {
+            padding: 1.25rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+
+        .d-body p.desc {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* ── Shift & Telemetry Panel ── */
+        .telem-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .telem-stat:last-child { border: none; }
+
+        .telem-label { color: var(--text-muted); }
+
+        .telem-val { font-weight: 700; }
+
+        .telem-val.ok { color: var(--success); }
+        .telem-val.warn { color: var(--warning); }
+
+        .sync-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(0,230,118,0.08);
+            border: 1px solid rgba(0,230,118,0.2);
+            color: var(--success);
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .sync-badge .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: blink 1.5s infinite; }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .vehicle-input {
+            background: var(--hover-bg);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.65rem 0.85rem;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 600;
+            width: 100%;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .vehicle-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn-clock {
+            width: 100%;
+            padding: 1rem;
+            background: var(--success);
+            border: none;
+            color: white;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 800;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-clock:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,230,118,0.3);
+        }
+
+        .btn-clock.clocked-in {
+            background: var(--danger);
+        }
+
+        /* ── Current Objective ── */
+        .objective-main {
+            text-align: center;
+            padding: 1rem 0;
+        }
+
+        .obj-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+        }
+
+        .obj-address {
+            font-size: 1.6rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 0.5rem;
+        }
+
+        .obj-eta {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .obj-eta strong { color: var(--primary); }
+
+        /* Hyper-local instructions */
+        .hyper-local {
+            background: rgba(99,102,241,0.06);
+            border: 1px solid rgba(99,102,241,0.2);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+        }
+
+        .hyper-local .hl-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #6366f1;
+            margin-bottom: 0.3rem;
+            letter-spacing: 0.05em;
+        }
+
+        .hyper-local .hl-text {
+            font-size: 0.88rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        /* Delivery Slider */
+        .deliver-slider {
+            width: 100%;
+            padding: 1.1rem;
+            background: linear-gradient(135deg, var(--success), #1db954);
+            border: none;
+            color: white;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: 800;
+            border-radius: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.7rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .deliver-slider:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,230,118,0.35);
+        }
+
+        .deliver-slider i { font-size: 1.3rem; }
+
+        /* ── Route Queue ── */
+        .route-queue {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .rq-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+            position: relative;
+        }
+
+        .rq-item:hover { background: var(--hover-bg); }
+
+        .rq-item.active {
+            background: rgba(255,71,19,0.05);
+            border-left: 3px solid var(--primary);
+        }
+
+        .rq-item.swapped {
+            background: rgba(255,179,0,0.05);
+            border-left: 3px solid var(--warning);
+        }
+
+        .rq-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--hover-bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.82rem;
+            flex-shrink: 0;
+        }
+
+        .rq-item.active .rq-num {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .rq-addr { font-weight: 600; font-size: 0.9rem; }
+        .rq-meta { font-size: 0.78rem; color: var(--text-muted); }
+
+        .rq-tag {
+            margin-left: auto;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 50px;
+            white-space: nowrap;
+        }
+
+        .rq-tag.next { background: rgba(255,71,19,0.12); color: var(--primary); }
+        .rq-tag.swap { background: rgba(255,179,0,0.12); color: var(--warning); }
+        .rq-tag.intercept { background: rgba(99,102,241,0.12); color: #6366f1; }
+
+        /* ── Intercept Flash Banner ── */
+        .intercept-banner {
+            background: rgba(99,102,241,0.08);
+            border: 1px solid rgba(99,102,241,0.25);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            animation: flashIn 0.5s ease;
+        }
+
+        @keyframes flashIn {
+            0% { opacity: 0; transform: scale(0.95); }
+            50% { opacity: 1; transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .intercept-banner .ib-icon { font-size: 1.4rem; flex-shrink: 0; }
+        .intercept-banner h4 { margin: 0 0 3px; font-size: 0.9rem; color: #6366f1; }
+        .intercept-banner p { margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
+
+        /* ── Bottom Panels ── */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+
+        /* Action buttons */
+        .btn-act {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: var(--primary-glow);
+            border: 1px solid rgba(255,71,19,0.15);
+            color: var(--text-light);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            width: 100%;
+            text-align: left;
+        }
+
+        .btn-act:hover { background: rgba(255,71,19,0.12); border-color: var(--primary); }
+        .btn-act i { font-size: 1rem; width: 20px; text-align: center; }
+
+        .btn-act.red { background: rgba(255,23,68,0.06); border-color: rgba(255,23,68,0.2); }
+        .btn-act.red:hover { background: rgba(255,23,68,0.12); border-color: var(--danger); }
+        .btn-act.red i { color: var(--danger); }
+
+        .btn-act.blue { background: rgba(99,102,241,0.06); border-color: rgba(99,102,241,0.2); }
+        .btn-act.blue:hover { background: rgba(99,102,241,0.12); border-color: #6366f1; }
+        .btn-act.blue i { color: #6366f1; }
+
+        .btn-act.green { background: rgba(0,230,118,0.06); border-color: rgba(0,230,118,0.2); }
+        .btn-act.green:hover { background: rgba(0,230,118,0.12); border-color: var(--success); }
+        .btn-act.green i { color: var(--success); }
+
+        /* Exception big button */
+        .btn-exception {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255,23,68,0.08);
+            border: 2px solid rgba(255,23,68,0.3);
+            color: var(--danger);
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 800;
+            border-radius: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.7rem;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .btn-exception:hover {
+            background: rgba(255,23,68,0.15);
+            border-color: var(--danger);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,23,68,0.2);
+        }
+
+        /* Piggyback prompt */
+        .piggyback-prompt {
+            background: rgba(255,179,0,0.06);
+            border: 1px dashed rgba(255,179,0,0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .piggyback-prompt .pb-title {
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: var(--warning);
+            margin-bottom: 0.35rem;
+        }
+
+        .piggyback-prompt .pb-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        @media (max-width: 1100px) {
+            .top-row { grid-template-columns: 1fr; }
+            .bottom-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Topbar -->
+    <div class="topbar">
+        <div class="logo"><i class="fa-solid fa-truck"></i> DRIVER CONSOLE</div>
+        <div style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem;">
+            <span class="sync-badge"><span class="pulse"></span> ACTIVE SYNC</span>
+            <span style="color: var(--text-muted);">Shift: <strong style="color:var(--text-light);">8h 14m</strong></span>
+        </div>
+        <div class="user-profile">
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+                <i class="fa-solid fa-sun icon-sun"></i>
+                <i class="fa-solid fa-moon icon-moon"></i>
+            </button>
+            <a href="auth.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> End Shift
+            </a>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="driver-layout">
+
+        <!-- ════════════════════════════════════════════════════
+             TOP ROW: Telemetry | Current Objective | Route Queue
+             ════════════════════════════════════════════════════ -->
+        <div class="top-row">
+
+            <!-- ── Col 1: Shift & Telemetry ── -->
+            <div class="d-card">
+                <div class="d-head"><i class="fa-solid fa-satellite-dish"></i> Shift & Telemetry</div>
+                <div class="d-body">
+
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:0.35rem;">VEHICLE PAIRING</label>
+                        <input type="text" class="vehicle-input" value="TRK-A100" placeholder="Enter Truck ID" />
+                    </div>
+
+                    <button class="btn-clock" id="clockBtn" onclick="toggleClock()">
+                        <i class="fa-solid fa-power-off"></i> Clock In — Engage Active Sync
+                    </button>
+
+                    <div style="border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                        <div class="telem-stat">
+                            <span class="telem-label">MQTT Pipeline</span>
+                            <span class="telem-val ok">● Connected</span>
+                        </div>
+                        <div class="telem-stat">
+                            <span class="telem-label">GPS Signal</span>
+                            <span class="telem-val ok">Locked (±3m)</span>
+                        </div>
+                        <div class="telem-stat">
+                            <span class="telem-label">Speed</span>
+                            <span class="telem-val">42 km/h</span>
+                        </div>
+                        <div class="telem-stat">
+                            <span class="telem-label">Hard Braking</span>
+                            <span class="telem-val ok">0 events</span>
+                        </div>
+                        <div class="telem-stat">
+                            <span class="telem-label">Idle Time</span>
+                            <span class="telem-val warn">12 min</span>
+                        </div>
+                        <div class="telem-stat">
+                            <span class="telem-label">Device Battery</span>
+                            <span class="telem-val ok">78%</span>
+                        </div>
+                        <div class="telem-stat">
+                            <span class="telem-label">Deliveries Done</span>
+                            <span class="telem-val">7 / 18</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Col 2: Current Objective ── -->
+            <div class="d-card">
+                <div class="d-head"><i class="fa-solid fa-location-crosshairs"></i> Next Drop-Off</div>
+                <div class="d-body" style="justify-content: space-between;">
+
+                    <div class="objective-main">
+                        <div class="obj-label">Stop #8 of 18</div>
+                        <div class="obj-address">42A, 4th Cross Rd<br>Indiranagar</div>
+                        <div class="obj-eta"><i class="fa-regular fa-clock"></i> Target: <strong>2:40 PM</strong> (14 min away)</div>
+                    </div>
+
+                    <!-- Intercept Banner -->
+                    <div class="intercept-banner">
+                        <div class="ib-icon">📍</div>
+                        <div>
+                            <h4>Live Intercept Request</h4>
+                            <p>Customer "Jayesh D." is <strong>0.5 km ahead</strong> at Starbucks, 100 Feet Road. Proceed to intercept point for handoff.</p>
+                        </div>
+                    </div>
+
+                    <!-- Hyper-Local Instructions (auto-expand at 50m) -->
+                    <div class="hyper-local">
+                        <div class="hl-label"><i class="fa-solid fa-map-pin"></i> Final 50 Feet — Customer Notes</div>
+                        <div class="hl-text">"Gate code is 4921. Beware of dog. Leave it behind the blue planter. Please don't ring the bell — baby is sleeping."</div>
+                    </div>
+
+                    <!-- Deliver Button -->
+                    <button class="deliver-slider" onclick="markDelivered()">
+                        <i class="fa-solid fa-check-double"></i> Swipe to Mark Delivered
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Col 3: AI-Optimized Route Queue ── -->
+            <div class="d-card">
+                <div class="d-head"><i class="fa-solid fa-route"></i> AI-Optimized Route Queue</div>
+                <div class="route-queue">
+                    <div class="rq-item" style="opacity: 0.5;">
+                        <div class="rq-num">6</div>
+                        <div><div class="rq-addr">1240 Tech Blvd</div><div class="rq-meta">2 Packages · Delivered ✓</div></div>
+                    </div>
+                    <div class="rq-item" style="opacity: 0.5;">
+                        <div class="rq-num">7</div>
+                        <div><div class="rq-addr">8900 Industrial Pkwy</div><div class="rq-meta">1 Pallet · Delivered ✓</div></div>
+                    </div>
+                    <div class="rq-item active">
+                        <div class="rq-num">8</div>
+                        <div><div class="rq-addr">42A, 4th Cross Rd</div><div class="rq-meta">1 Package · High-Value</div></div>
+                        <span class="rq-tag next">NEXT</span>
+                    </div>
+                    <div class="rq-item">
+                        <div class="rq-num">9</div>
+                        <div><div class="rq-addr">Starbucks, 100 Feet Rd</div><div class="rq-meta">Live Intercept — Jayesh D.</div></div>
+                        <span class="rq-tag intercept">INTERCEPT</span>
+                    </div>
+                    <div class="rq-item swapped">
+                        <div class="rq-num">10</div>
+                        <div><div class="rq-addr">55 MG Road, Suite 4</div><div class="rq-meta">3 Packages · AI Swapped ↑</div></div>
+                        <span class="rq-tag swap">AI SWAP</span>
+                    </div>
+                    <div class="rq-item swapped">
+                        <div class="rq-num">11</div>
+                        <div><div class="rq-addr">12 Brigade Rd</div><div class="rq-meta">1 Package · Was Stop #10</div></div>
+                        <span class="rq-tag swap">AI SWAP</span>
+                    </div>
+                    <div class="rq-item">
+                        <div class="rq-num">12</div>
+                        <div><div class="rq-addr">78 Residency Road</div><div class="rq-meta">2 Packages</div></div>
+                    </div>
+                    <div class="rq-item">
+                        <div class="rq-num">13</div>
+                        <div><div class="rq-addr">Koramangala 5th Block</div><div class="rq-meta">1 Package</div></div>
+                    </div>
+                    <div class="rq-item">
+                        <div class="rq-num">14</div>
+                        <div><div class="rq-addr">HSR Layout Sector 2</div><div class="rq-meta">4 Packages</div></div>
+                    </div>
+                    <div class="rq-item">
+                        <div class="rq-num">15</div>
+                        <div><div class="rq-addr">BTM 2nd Stage</div><div class="rq-meta">1 Package</div></div>
+                    </div>
+                    <div class="rq-item">
+                        <div class="rq-num">16</div>
+                        <div><div class="rq-addr">JP Nagar 6th Phase</div><div class="rq-meta">2 Packages</div></div>
+                    </div>
+                    <div class="rq-item">
+                        <div class="rq-num">17</div>
+                        <div><div class="rq-addr">Jayanagar 4th Block</div><div class="rq-meta">1 Pallet</div></div>
+                    </div>
+                    <div class="rq-item">
+                        <div class="rq-num">18</div>
+                        <div><div class="rq-addr">Banashankari Hub — EOD</div><div class="rq-meta">Return to depot</div></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ════════════════════════════════════════════════════
+             BOTTOM ROW: Contextual Actions | Exception Handling
+             ════════════════════════════════════════════════════ -->
+        <div class="bottom-row">
+
+            <!-- ── Contextual Delivery Actions ── -->
+            <div class="d-card">
+                <div class="d-head"><i class="fa-solid fa-hand-pointer"></i> Contextual Delivery Actions</div>
+                <div class="d-body">
+                    <p class="desc">Actions that activate contextually as you approach each stop. The AI triggers instructions at the 50-meter geofence.</p>
+
+                    <!-- Piggyback Return Prompt -->
+                    <div class="piggyback-prompt">
+                        <div class="pb-title"><i class="fa-solid fa-arrows-rotate"></i> Bonus Action: Piggyback Return</div>
+                        <div class="pb-sub">After current drop-off, pick up a return at <strong>42B, 4th Cross Rd</strong> (next door).</div>
+                        <button class="btn-act green" onclick="alert('✅ Piggyback Return accepted! Navigation updated to include pickup at 42B after current delivery.')">
+                            <i class="fa-solid fa-check"></i> Accept Piggyback Return
+                        </button>
+                    </div>
+
+                    <button class="btn-act blue" onclick="alert('📍 Accepting Live Intercept. Navigation rerouting to Starbucks, 100 Feet Rd for handoff to Jayesh D.')">
+                        <i class="fa-solid fa-location-crosshairs"></i> Accept Live Intercept
+                    </button>
+
+                    <button class="btn-act" onclick="alert('🔐 Safe Drop initiated. Rerouting to Indiranagar Smart Locker (450m). Customer notified.')">
+                        <i class="fa-solid fa-lock"></i> Execute Safe Drop to Smart Locker
+                    </button>
+
+                    <button class="btn-act green" onclick="alert('📦 Package left in safe location. Photo proof captured. Customer notified with photo.')">
+                        <i class="fa-solid fa-camera"></i> Photo Proof of Delivery
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Exception Handling ── -->
+            <div class="d-card">
+                <div class="d-head"><i class="fa-solid fa-shield-halved"></i> Exception Handling</div>
+                <div class="d-body">
+                    <p class="desc">One-tap triggers for critical events. The AI handles recalculation, customer alerts, and dispatcher notification automatically.</p>
+
+                    <button class="btn-exception" onclick="triggerException()">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Hard Failure — Trigger Exception
+                    </button>
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; margin-top:-0.25rem;">
+                        Flat tire, accident, road blocked — AI recalculates entire manifest & alerts all affected customers
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                        <button class="btn-act red" onclick="alert('🔐 Safe Drop Protocol activated. AI finding nearest secure smart locker. Customer will be notified with locker access code.')">
+                            <i class="fa-solid fa-box"></i> Safe Drop Protocol (Customer Away)
+                        </button>
+                    </div>
+
+                    <button class="btn-act" onclick="alert('⚠️ Partial failure logged. 1 item damaged in transit. Support notified. Ref: #EXC-4421')">
+                        <i class="fa-solid fa-box-open"></i> Report Damaged Item
+                    </button>
+
+                    <button class="btn-act" onclick="alert('🔄 Customer not available. Package marked for re-attempt tomorrow. Customer notified via SMS.')">
+                        <i class="fa-solid fa-rotate-left"></i> Mark Re-Attempt (No Access)
+                    </button>
+
+                    <button class="btn-act blue" onclick="alert('📞 Connecting to dispatcher on channel 4...')">
+                        <i class="fa-solid fa-headset"></i> Contact Dispatch Control Tower
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/theme.js"></script>
+    <script>
+        // Clock In / Out toggle
+        let clockedIn = true;
+        function toggleClock() {
+            const btn = document.getElementById('clockBtn');
+            clockedIn = !clockedIn;
+            if (clockedIn) {
+                btn.innerHTML = '<i class="fa-solid fa-power-off"></i> Clock Out — End Active Sync';
+                btn.classList.add('clocked-in');
+                alert('🟢 Active Sync engaged! MQTT pipeline open. Background location streaming to Control Tower.');
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-power-off"></i> Clock In — Engage Active Sync';
+                btn.classList.remove('clocked-in');
+                alert('🔴 Active Sync disengaged. Shift telemetry saved. Clock back in to resume.');
+            }
+        }
+        // Set initial state
+        document.getElementById('clockBtn').innerHTML = '<i class="fa-solid fa-power-off"></i> Clock Out — End Active Sync';
+        document.getElementById('clockBtn').classList.add('clocked-in');
+
+        // Mark delivered
+        function markDelivered() {
+            alert('✅ Package at 42A, 4th Cross Rd marked as DELIVERED.\nSensor data tagged. Moving to Stop #9: Starbucks Intercept.\nCustomer Jayesh D. notified: "Your driver is approaching."');
+        }
+
+        // Hard failure exception
+        function triggerException() {
+            alert('🚨 HARD FAILURE TRIGGERED\n\n• AI recalculating entire manifest (11 remaining stops)\n• Control Tower notified immediately\n• Transparency Alerts sent to all 11 affected customers\n• Nearest backup driver: TRK-B207 (3.2 km away)\n• Dispatcher will confirm re-assignment within 60 seconds');
+        }
+    </script>
+
+</body>
+
+</html>

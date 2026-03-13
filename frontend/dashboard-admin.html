@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Admin Console | LogiPredict AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --term-bg: #0a0a0a;
+            --term-surface: rgba(0, 255, 17, 0.03);
+            --term-primary: #00ff41;
+            --term-secondary: #008f11;
+            --term-alert: #ff003c;
+            --term-warn: #ffb000;
+            --term-border: #333;
+            --term-text: #00ff41;
+            --term-text-dim: #888;
+            --term-text-dimmer: #666;
+            --term-header-bg: #333;
+            --term-header-text: #ccc;
+            --term-input-bg: #222;
+            --term-scanline: rgba(0, 0, 0, 0.25);
+            --chart-dot: #00ff41;
+            --chart-grid: #222;
+            --chart-label: #ccc;
+        }
+
+        [data-theme="light"] {
+            --term-bg: #f5f5f0;
+            --term-surface: rgba(0, 100, 20, 0.04);
+            --term-primary: #006420;
+            --term-secondary: #008f11;
+            --term-alert: #cc0030;
+            --term-warn: #b87800;
+            --term-border: #d0d0d0;
+            --term-text: #1a1a1a;
+            --term-text-dim: #666;
+            --term-text-dimmer: #999;
+            --term-header-bg: #e0e0e0;
+            --term-header-text: #333;
+            --term-input-bg: #e8e8e8;
+            --term-scanline: transparent;
+            --chart-dot: #006420;
+            --chart-grid: #e0e0e0;
+            --chart-label: #666;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--term-bg);
+            color: var(--term-text);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            overflow-y: auto;
+            transition: background-color 0.35s ease, color 0.35s ease;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::after {
+            content: " "; display: block; position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(var(--term-scanline) 50%, transparent 50%);
+            z-index: 2; background-size: 100% 2px; pointer-events: none;
+            transition: background 0.35s ease;
+        }
+
+        .admin-view {
+            padding: 1.25rem;
+            max-width: 1500px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 2px solid var(--term-secondary);
+            padding-bottom: 0.75rem;
+        }
+
+        .title { font-weight: 700; font-size: 1.3rem; letter-spacing: -1px; text-shadow: 0 0 5px var(--term-secondary); }
+        [data-theme="light"] .title { text-shadow: none; }
+
+        .sys-info { text-align: right; font-size: 0.75rem; color: var(--term-text-dim); }
+
+        .btn-exit {
+            color: var(--term-alert); text-decoration: none;
+            border: 1px solid var(--term-alert);
+            padding: 4px 12px; font-size: 0.75rem; font-family: inherit;
+            transition: all 0.2s; background: transparent;
+        }
+
+        .btn-exit:hover { background: var(--term-alert); color: #fff; box-shadow: 0 0 10px var(--term-alert); }
+        [data-theme="light"] .btn-exit:hover { box-shadow: 0 4px 12px rgba(204,0,48,0.2); }
+
+        .admin-theme-toggle {
+            background: transparent; border: 1px solid var(--term-border);
+            color: var(--term-text-dim); border-radius: 4px;
+            width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.25s ease; font-size: 0.8rem;
+        }
+
+        .admin-theme-toggle:hover { background: var(--term-border); color: var(--term-text); }
+
+        /* ── Panel ── */
+        .panel {
+            border: 1px solid var(--term-border);
+            background: var(--term-surface);
+            display: flex; flex-direction: column;
+            transition: background 0.35s ease, border-color 0.35s ease;
+        }
+
+        .panel-header {
+            background: var(--term-header-bg); color: var(--term-header-text);
+            padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 700;
+            display: flex; justify-content: space-between;
+            transition: background 0.35s ease, color 0.35s ease;
+        }
+
+        .panel-body { padding: 1rem; flex: 1; }
+
+        /* ── Metrics ── */
+        .m-label { color: var(--term-text-dim); font-size: 0.72rem; margin-bottom: 0.2rem; }
+        .m-value { font-size: 1.1rem; font-weight: 700; }
+        .status-ok { color: var(--term-primary); }
+        .status-warn { color: var(--term-warn); }
+        .status-err { color: var(--term-alert); }
+
+        .metric-block { margin-bottom: 1.25rem; }
+
+        .progress-bar { width: 100%; height: 6px; background: var(--term-input-bg); margin-top: 0.4rem; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--term-primary); border-radius: 3px; transition: width 0.6s ease; }
+        .progress-fill.warn { background: var(--term-warn); }
+        .progress-fill.err { background: var(--term-alert); }
+
+        /* ── Grid Rows ── */
+        .row-top { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.25rem; }
+        .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; }
+        .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+
+        /* ── Terminal Buttons ── */
+        .btn-term {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            background: transparent; border: 1px solid var(--term-border);
+            color: var(--term-text); padding: 0.5rem 1rem; font-family: inherit;
+            font-size: 0.78rem; cursor: pointer; transition: all 0.2s;
+        }
+
+        .btn-term:hover { background: var(--term-border); }
+
+        .btn-term.green { border-color: var(--term-primary); color: var(--term-primary); }
+        .btn-term.green:hover { background: rgba(0,255,65,0.1); }
+
+        .btn-term.red { border-color: var(--term-alert); color: var(--term-alert); }
+        .btn-term.red:hover { background: rgba(255,0,60,0.1); }
+
+        .btn-term.warn { border-color: var(--term-warn); color: var(--term-warn); }
+        .btn-term.warn:hover { background: rgba(255,176,0,0.1); }
+
+        /* ── Slider Input ── */
+        .slider-group { display: flex; align-items: center; gap: 0.75rem; }
+        .slider-group input[type="range"] { flex: 1; accent-color: var(--term-primary); cursor: pointer; }
+        .slider-val { font-weight: 700; min-width: 50px; text-align: right; }
+
+        /* ── Kill Switch ── */
+        .kill-switch {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.65rem 1rem; border: 1px solid var(--term-border);
+            background: var(--term-surface); margin-bottom: 0.5rem;
+            transition: background 0.2s;
+        }
+
+        .kill-switch:hover { background: var(--term-input-bg); }
+
+        .ks-label { font-size: 0.82rem; }
+        .ks-status { font-size: 0.75rem; font-weight: 700; }
+        .ks-status.on { color: var(--term-primary); }
+        .ks-status.off { color: var(--term-alert); }
+
+        .ks-toggle {
+            width: 44px; height: 22px; background: var(--term-primary);
+            border-radius: 50px; position: relative; cursor: pointer; transition: background 0.3s;
+        }
+
+        .ks-toggle.off { background: var(--term-alert); }
+
+        .ks-toggle::after {
+            content: ''; width: 18px; height: 18px; background: white;
+            border-radius: 50%; position: absolute; top: 2px; left: 24px; transition: left 0.3s;
+        }
+
+        .ks-toggle.off::after { left: 2px; }
+
+        /* ── Logs ── */
+        .log-container {
+            padding: 0.75rem; overflow-y: auto; max-height: 220px;
+            font-size: 0.75rem; line-height: 1.4;
+            background: var(--term-input-bg); border: 1px solid var(--term-border);
+        }
+
+        .log-line { margin-bottom: 3px; }
+        .log-time { color: var(--term-text-dimmer); margin-right: 8px; }
+        .log-level-info { color: var(--term-text-dim); }
+        .log-level-warn { color: var(--term-warn); }
+        .log-level-err { color: var(--term-alert); text-shadow: 0 0 5px var(--term-alert); }
+        [data-theme="light"] .log-level-err { text-shadow: none; }
+
+        /* ── MQTT Heatmap ── */
+        .region-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;
+        }
+
+        .region-cell {
+            text-align: center; padding: 0.75rem 0.5rem;
+            border: 1px solid var(--term-border); font-size: 0.75rem;
+        }
+
+        .region-cell .rc-name { color: var(--term-text-dim); margin-bottom: 0.25rem; }
+        .region-cell .rc-val { font-weight: 700; font-size: 1rem; }
+
+        /* ── Geofence Zones ── */
+        .zone-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.55rem 0; border-bottom: 1px solid var(--term-border); font-size: 0.82rem;
+        }
+
+        .zone-row:last-child { border: none; }
+
+        /* ── API Gauge ── */
+        .gauge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+        .gauge-card {
+            padding: 0.85rem; border: 1px solid var(--term-border);
+            text-align: center; background: var(--term-surface);
+        }
+
+        .gauge-card .gc-label { font-size: 0.7rem; color: var(--term-text-dim); margin-bottom: 0.3rem; }
+        .gauge-card .gc-val { font-size: 1.3rem; font-weight: 700; }
+
+        @media (max-width: 1100px) {
+            .row-top, .row-3, .row-2 { grid-template-columns: 1fr; }
+            .region-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="admin-view">
+
+        <!-- ── Header ── -->
+        <header class="header">
+            <div>
+                <div class="title">sysadmin@logipredict:~$ _</div>
+                <div style="color: var(--term-text-dimmer); margin-top: 0.35rem; font-size: 0.75rem;">
+                    [ROOT ACCESS GRANTED. LEVEL 4 ENGINEERING DIAGNOSTIC OVERRIDE ACTIVE.]
+                </div>
+            </div>
+            <div class="sys-info">
+                <div>SYSTEM UP: 45 Days, 12 Hrs</div>
+                <div>CLUSTER: us-central1-a [PROD]</div>
+                <div style="display: flex; align-items: center; gap: 0.75rem; justify-content: flex-end; margin-top: 0.35rem;">
+                    <button class="admin-theme-toggle theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+                        <i class="fa-solid fa-sun icon-sun"></i>
+                        <i class="fa-solid fa-moon icon-moon"></i>
+                    </button>
+                    <a href="auth.html" class="btn-exit">[ TERMINATE_SESSION ]</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- ════════════════════════════════════════════════════════
+             ROW 1: Rolling Recursive Engine + MQTT Telemetry
+             ════════════════════════════════════════════════════════ -->
+        <div class="row-top">
+
+            <!-- 1. Rolling Recursive Engine (AI Management) -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>ROLLING_RECURSIVE_ENGINE</span>
+                    <span>[ MODEL_v3.2_XGBOOST ]</span>
+                </div>
+                <div class="panel-body">
+                    <p style="color: var(--term-text-dim); font-size: 0.75rem; margin-bottom: 1rem;">
+                        Predicted vs. Actual scatter — if dots skew above the diagonal, the AI under-predicts delay.
+                        Adjust feature weightings and push a new model version live.
+                    </p>
+
+                    <div style="position:relative; height: 240px; width:100%; margin-bottom: 1rem;">
+                        <canvas id="scatterPlot"></canvas>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--term-border); padding-top: 0.75rem;">
+                        <div class="m-label" style="margin-bottom: 0.5rem;">FEATURE WEIGHT TUNING</div>
+
+                        <div class="slider-group" style="margin-bottom: 0.5rem;">
+                            <span style="min-width: 140px; font-size: 0.78rem;">Live Traffic</span>
+                            <input type="range" min="0" max="100" value="75" oninput="this.nextElementSibling.textContent = this.value + '%'">
+                            <span class="slider-val status-ok">75%</span>
+                        </div>
+
+                        <div class="slider-group" style="margin-bottom: 0.5rem;">
+                            <span style="min-width: 140px; font-size: 0.78rem;">Historical Routes</span>
+                            <input type="range" min="0" max="100" value="45" oninput="this.nextElementSibling.textContent = this.value + '%'">
+                            <span class="slider-val status-warn">45%</span>
+                        </div>
+
+                        <div class="slider-group" style="margin-bottom: 0.5rem;">
+                            <span style="min-width: 140px; font-size: 0.78rem;">Weather Feed</span>
+                            <input type="range" min="0" max="100" value="60" oninput="this.nextElementSibling.textContent = this.value + '%'">
+                            <span class="slider-val status-ok">60%</span>
+                        </div>
+
+                        <div class="slider-group" style="margin-bottom: 0.75rem;">
+                            <span style="min-width: 140px; font-size: 0.78rem;">Warehouse Backlog</span>
+                            <input type="range" min="0" max="100" value="30" oninput="this.nextElementSibling.textContent = this.value + '%'">
+                            <span class="slider-val">30%</span>
+                        </div>
+
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn-term green" onclick="alert('✅ Model v3.3 pushed to PRODUCTION. Rolling update across 24 worker nodes. ETA: 45 seconds.')">
+                                [ PUSH_MODEL_v3.3 ]
+                            </button>
+                            <button class="btn-term" onclick="alert('🔄 Retraining initiated with new weights. Estimated time: 8 minutes.')">
+                                [ RETRAIN_NOW ]
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. MQTT Telemetry Pipeline -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>MQTT_TELEMETRY_PIPELINE</span>
+                    <span>[ FIREHOSE ]</span>
+                </div>
+                <div class="panel-body">
+                    <p style="color: var(--term-text-dim); font-size: 0.75rem; margin-bottom: 1rem;">
+                        Live data from driver devices. Monitor packet loss and latency per region.
+                        Route telemetry through backup servers if a region is choking.
+                    </p>
+
+                    <div class="region-grid" style="margin-bottom: 1rem;">
+                        <div class="region-cell">
+                            <div class="rc-name">NORTH (Delhi)</div>
+                            <div class="rc-val status-ok">12ms</div>
+                            <div style="font-size:0.65rem; color:var(--term-text-dim);">0.1% loss</div>
+                        </div>
+                        <div class="region-cell">
+                            <div class="rc-name">SOUTH (BLR)</div>
+                            <div class="rc-val status-ok">18ms</div>
+                            <div style="font-size:0.65rem; color:var(--term-text-dim);">0.3% loss</div>
+                        </div>
+                        <div class="region-cell" style="border-color: var(--term-warn);">
+                            <div class="rc-name">WEST (Mumbai)</div>
+                            <div class="rc-val status-warn">142ms</div>
+                            <div style="font-size:0.65rem; color:var(--term-warn);">4.2% loss ⚠</div>
+                        </div>
+                        <div class="region-cell">
+                            <div class="rc-name">EAST (Kolkata)</div>
+                            <div class="rc-val status-ok">24ms</div>
+                            <div style="font-size:0.65rem; color:var(--term-text-dim);">0.5% loss</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <div class="metric-block">
+                            <div class="m-label">Aggregate Throughput</div>
+                            <div class="m-value status-ok">1,842 msgs/sec</div>
+                        </div>
+                        <div class="metric-block">
+                            <div class="m-label">Active Driver Connections</div>
+                            <div class="m-value status-ok">38 / 40</div>
+                        </div>
+                        <div class="metric-block">
+                            <div class="m-label">Mumbai Region — Network Issue</div>
+                            <div class="m-value status-warn">Jio 4G tower degradation in Andheri</div>
+                            <div class="progress-bar"><div class="progress-fill warn" style="width: 70%"></div></div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn-term warn" onclick="alert('🔄 Mumbai telemetry rerouted through backup relay (ap-south-1b). Latency should drop within 30s.')">
+                            [ ROUTE_MUMBAI_BACKUP ]
+                        </button>
+                        <button class="btn-term" onclick="alert('📊 Exporting MQTT diagnostics for the last 24h to /reports/mqtt_diag_20260313.csv')">
+                            [ EXPORT_DIAG ]
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════
+             ROW 2: Geofence Calibration + API Health + Feature Drift
+             ════════════════════════════════════════════════════════ -->
+        <div class="row-3">
+
+            <!-- 3. Global Geofence Calibration -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>GEOFENCE_CALIBRATION</span>
+                    <span>[ SPATIAL ]</span>
+                </div>
+                <div class="panel-body">
+                    <p style="color: var(--term-text-dim); font-size: 0.75rem; margin-bottom: 1rem;">
+                        Adjust Spatial SMS trigger radius per zone. Dense city grids need smaller geofences to avoid GPS-bounce false triggers.
+                    </p>
+
+                    <div class="zone-row">
+                        <span>Delhi NCR (Urban)</span>
+                        <div class="slider-group" style="flex: 1; max-width: 200px;">
+                            <input type="range" min="200" max="5000" value="1500" step="100"
+                                oninput="this.nextElementSibling.textContent = (this.value/1000).toFixed(1) + 'km'">
+                            <span class="slider-val status-ok">1.5km</span>
+                        </div>
+                    </div>
+
+                    <div class="zone-row">
+                        <span>Mumbai (Dense)</span>
+                        <div class="slider-group" style="flex: 1; max-width: 200px;">
+                            <input type="range" min="200" max="5000" value="800" step="100"
+                                oninput="this.nextElementSibling.textContent = (this.value/1000).toFixed(1) + 'km'">
+                            <span class="slider-val status-warn">0.8km</span>
+                        </div>
+                    </div>
+
+                    <div class="zone-row">
+                        <span>Bangalore (Suburban)</span>
+                        <div class="slider-group" style="flex: 1; max-width: 200px;">
+                            <input type="range" min="200" max="5000" value="2000" step="100"
+                                oninput="this.nextElementSibling.textContent = (this.value/1000).toFixed(1) + 'km'">
+                            <span class="slider-val status-ok">2.0km</span>
+                        </div>
+                    </div>
+
+                    <div class="zone-row">
+                        <span>Kolkata (Mixed)</span>
+                        <div class="slider-group" style="flex: 1; max-width: 200px;">
+                            <input type="range" min="200" max="5000" value="1200" step="100"
+                                oninput="this.nextElementSibling.textContent = (this.value/1000).toFixed(1) + 'km'">
+                            <span class="slider-val status-ok">1.2km</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 0.5rem; border-top: 1px solid var(--term-border); padding-top: 0.75rem;">
+                        <div class="m-label" style="margin-bottom: 0.5rem;">Cell Tower Reliability</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 0.78rem;">
+                            <span>Delhi</span><span class="status-ok">98.4%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 0.78rem;">
+                            <span>Mumbai</span><span class="status-warn">89.1%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 0.78rem;">
+                            <span>Bangalore</span><span class="status-ok">96.2%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.78rem;">
+                            <span>Kolkata</span><span class="status-ok">93.8%</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-term green" style="margin-top: 0.75rem;" onclick="alert('✅ Geofence calibrations pushed to all 40 active vehicles. Changes take effect within 10 seconds.')">
+                        [ APPLY_GEOFENCE_GLOBAL ]
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. API Health & Throttling -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>API_HEALTH_THROTTLE</span>
+                    <span>[ RATE LIMITS ]</span>
+                </div>
+                <div class="panel-body">
+                    <p style="color: var(--term-text-dim); font-size: 0.75rem; margin-bottom: 1rem;">
+                        Monitor outbound API rate limits (Twilio SMS, Firebase Push). Throttle alerts to prevent crashes during merchant bulk uploads.
+                    </p>
+
+                    <div class="gauge-grid" style="margin-bottom: 1rem;">
+                        <div class="gauge-card">
+                            <div class="gc-label">TWILIO SMS</div>
+                            <div class="gc-val status-warn">412 / 500</div>
+                            <div class="progress-bar" style="margin-top:0.3rem;"><div class="progress-fill warn" style="width: 82%"></div></div>
+                            <div style="font-size:0.65rem; color:var(--term-warn); margin-top:0.2rem;">82% — Approaching limit</div>
+                        </div>
+                        <div class="gauge-card">
+                            <div class="gc-label">FIREBASE PUSH</div>
+                            <div class="gc-val status-ok">1,240 / 5,000</div>
+                            <div class="progress-bar" style="margin-top:0.3rem;"><div class="progress-fill" style="width: 25%"></div></div>
+                            <div style="font-size:0.65rem; color:var(--term-text-dim); margin-top:0.2rem;">25% — Healthy</div>
+                        </div>
+                        <div class="gauge-card">
+                            <div class="gc-label">WHATSAPP API</div>
+                            <div class="gc-val status-ok">88 / 1,000</div>
+                            <div class="progress-bar" style="margin-top:0.3rem;"><div class="progress-fill" style="width: 9%"></div></div>
+                            <div style="font-size:0.65rem; color:var(--term-text-dim); margin-top:0.2rem;">9% — Healthy</div>
+                        </div>
+                        <div class="gauge-card">
+                            <div class="gc-label">WEBHOOK OUT</div>
+                            <div class="gc-val status-ok">220 / 2,000</div>
+                            <div class="progress-bar" style="margin-top:0.3rem;"><div class="progress-fill" style="width: 11%"></div></div>
+                            <div style="font-size:0.65rem; color:var(--term-text-dim); margin-top:0.2rem;">11% — Healthy</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 0.75rem;">
+                        <div class="m-label" style="margin-bottom: 0.35rem;">Throttle Transparency Alerts</div>
+                        <div class="slider-group">
+                            <span style="font-size: 0.75rem; min-width: 80px;">Queue Rate</span>
+                            <input type="range" min="10" max="500" value="200" step="10"
+                                oninput="this.nextElementSibling.textContent = this.value + '/min'">
+                            <span class="slider-val status-ok">200/min</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn-term warn" onclick="alert('⚠️ Twilio SMS throttled to 50/min burst. Alerts will queue and drip-feed to avoid rate limit crash.')">
+                            [ THROTTLE_SMS ]
+                        </button>
+                        <button class="btn-term green" onclick="alert('✅ All API channels healthy. No throttling needed.')">
+                            [ HEALTH_CHECK ]
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature Drift Monitor -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>FEATURE_DRIFT_MONITOR</span>
+                    <span>[ PSI SCORES ]</span>
+                </div>
+                <div class="panel-body">
+                    <div class="m-label" style="margin-bottom: 0.75rem;">Population Stability Index (PSI) — last 24h</div>
+
+                    <div class="metric-block">
+                        <div style="display:flex; justify-content:space-between; font-size:0.82rem;">
+                            <span>current_speed_kmh</span><span class="status-ok">0.02</span>
+                        </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 10%"></div></div>
+                    </div>
+
+                    <div class="metric-block">
+                        <div style="display:flex; justify-content:space-between; font-size:0.82rem;">
+                            <span>weather_encoded</span><span class="status-ok">0.05</span>
+                        </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 25%"></div></div>
+                    </div>
+
+                    <div class="metric-block">
+                        <div style="display:flex; justify-content:space-between; font-size:0.82rem;">
+                            <span>traffic_index</span><span class="status-warn">0.14</span>
+                        </div>
+                        <div class="progress-bar"><div class="progress-fill warn" style="width: 70%"></div></div>
+                    </div>
+
+                    <div class="metric-block">
+                        <div style="display:flex; justify-content:space-between; font-size:0.82rem;">
+                            <span>warehouse_backlog</span><span class="status-ok">0.03</span>
+                        </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 15%"></div></div>
+                    </div>
+
+                    <div class="metric-block">
+                        <div style="display:flex; justify-content:space-between; font-size:0.82rem;">
+                            <span>distance_remaining</span><span class="status-ok">0.01</span>
+                        </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 5%"></div></div>
+                    </div>
+
+                    <div style="border-top: 1px dashed var(--term-border); padding-top: 0.5rem; font-size: 0.72rem;">
+                        <div style="color: var(--term-primary);">[OK] PSI &lt; 0.10 = Stable</div>
+                        <div style="color: var(--term-warn);">[WARN] PSI 0.10–0.25 = Monitor</div>
+                        <div style="color: var(--term-alert);">[ALERT] PSI &gt; 0.25 = Retrain</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════
+             ROW 3: Kill Switches + System Logs
+             ════════════════════════════════════════════════════════ -->
+        <div class="row-2">
+
+            <!-- 5. Fallback Protocols (God Mode) -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>FALLBACK_PROTOCOLS</span>
+                    <span style="color: var(--term-alert);">[ GOD MODE ]</span>
+                </div>
+                <div class="panel-body">
+                    <p style="color: var(--term-text-dim); font-size: 0.75rem; margin-bottom: 1rem;">
+                        Master kill switches. If a third-party API goes down, instantly fall back to safe operating modes. Operations continue even during outages.
+                    </p>
+
+                    <div class="kill-switch">
+                        <div>
+                            <div class="ks-label">AI Predictive Mode</div>
+                            <div style="font-size:0.68rem; color:var(--term-text-dimmer);">Disable to fall back to Static ETA Mode</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span class="ks-status on" id="ks-ai-status">ACTIVE</span>
+                            <div class="ks-toggle" id="ks-ai" onclick="toggleKS('ai')"></div>
+                        </div>
+                    </div>
+
+                    <div class="kill-switch">
+                        <div>
+                            <div class="ks-label">Spatial SMS Alerts</div>
+                            <div style="font-size:0.68rem; color:var(--term-text-dimmer);">Disable if Twilio API is down</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span class="ks-status on" id="ks-sms-status">ACTIVE</span>
+                            <div class="ks-toggle" id="ks-sms" onclick="toggleKS('sms')"></div>
+                        </div>
+                    </div>
+
+                    <div class="kill-switch">
+                        <div>
+                            <div class="ks-label">Live Traffic Feed</div>
+                            <div style="font-size:0.68rem; color:var(--term-text-dimmer);">Disable if Google Maps API is unreachable</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span class="ks-status on" id="ks-traffic-status">ACTIVE</span>
+                            <div class="ks-toggle" id="ks-traffic" onclick="toggleKS('traffic')"></div>
+                        </div>
+                    </div>
+
+                    <div class="kill-switch">
+                        <div>
+                            <div class="ks-label">Weather Data Ingestion</div>
+                            <div style="font-size:0.68rem; color:var(--term-text-dimmer);">Disable if weather API returns stale data</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span class="ks-status on" id="ks-weather-status">ACTIVE</span>
+                            <div class="ks-toggle" id="ks-weather" onclick="toggleKS('weather')"></div>
+                        </div>
+                    </div>
+
+                    <div class="kill-switch">
+                        <div>
+                            <div class="ks-label">Auto Rerouting Engine</div>
+                            <div style="font-size:0.68rem; color:var(--term-text-dimmer);">Disable to freeze all route optimization</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span class="ks-status on" id="ks-reroute-status">ACTIVE</span>
+                            <div class="ks-toggle" id="ks-reroute" onclick="toggleKS('reroute')"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 0.75rem; display:flex; gap: 0.5rem;">
+                        <button class="btn-term red" onclick="alert('🔴 ALL SYSTEMS SWITCHED TO STATIC MODE.\nAI predictions disabled. Static ETAs in effect.\nAll dispatchers notified. Operations continue in safe mode.')">
+                            [ GLOBAL_STATIC_FALLBACK ]
+                        </button>
+                        <button class="btn-term green" onclick="alert('🟢 All systems restored to AI Predictive Mode. Full pipeline active.')">
+                            [ RESTORE_ALL ]
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Logs -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>STDOUT_SYS_LOGS</span>
+                    <span>[ TAIL -F /VAR/LOG/PREDICTIVE.LOG ]</span>
+                </div>
+                <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <div class="metric-block" style="margin: 0;">
+                            <div class="m-label">Model Version</div>
+                            <div class="m-value status-ok" style="font-size: 1rem;">v3.2 — XGBoost</div>
+                        </div>
+                        <div class="metric-block" style="margin: 0;">
+                            <div class="m-label">Classifier Accuracy</div>
+                            <div class="m-value status-ok" style="font-size: 1rem;">92.0%</div>
+                        </div>
+                        <div class="metric-block" style="margin: 0;">
+                            <div class="m-label">Regressor MAE</div>
+                            <div class="m-value status-ok" style="font-size: 1rem;">9.4 min</div>
+                        </div>
+                        <div class="metric-block" style="margin: 0;">
+                            <div class="m-label">Inference Rate</div>
+                            <div class="m-value status-ok" style="font-size: 1rem;">405/sec</div>
+                        </div>
+                    </div>
+
+                    <div class="log-container" id="terminal-logs">
+                        <div class="log-line"><span class="log-time">14:02:11.002</span> <span class="log-level-info">[INFO]</span> Kubernetes Pod web-api-9xj2 ready.</div>
+                        <div class="log-line"><span class="log-time">14:02:15.421</span> <span class="log-level-info">[INFO]</span> Received batch telemetry from 144 nodes.</div>
+                        <div class="log-line"><span class="log-time">14:02:16.892</span> <span class="log-level-info">[INFO]</span> Firebase Sync trigger executed in 12ms.</div>
+                        <div class="log-line"><span class="log-time">14:02:18.111</span> <span class="log-level-warn">[WARN]</span> Retrying dead-letter queue (Attempt 1/3) for #SHIP-4022.</div>
+                        <div class="log-line"><span class="log-time">14:02:22.052</span> <span class="log-level-err">[ERROR]</span> Model prediction timeout on edge device DRV-08.</div>
+                        <div class="log-line"><span class="log-time">14:02:24.110</span> <span class="log-level-info">[INFO]</span> Falling back to cloud inference for DRV-08.</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Theme JS -->
+    <script src="js/theme.js"></script>
+    <script>
+        // ── Chart Config ──
+        function getCC() {
+            const s = getComputedStyle(document.documentElement);
+            return {
+                dot: s.getPropertyValue('--chart-dot').trim(),
+                grid: s.getPropertyValue('--chart-grid').trim(),
+                label: s.getPropertyValue('--chart-label').trim()
+            };
+        }
+
+        // ── Scatter Plot ──
+        const generateData = () => {
+            const data = [];
+            for (let i = 0; i < 100; i++) {
+                const actual = Math.random() * 60;
+                const predicted = actual + (Math.random() - 0.5) * 15;
+                data.push({ x: actual, y: predicted > 0 ? predicted : 0 });
+            }
+            return data;
+        };
+
+        const cc = getCC();
+        Chart.defaults.font.family = "'Space Mono', monospace";
+        Chart.defaults.color = cc.label;
+
+        new Chart(document.getElementById('scatterPlot').getContext('2d'), {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Predicted vs Actual (Mins)',
+                    data: generateData(),
+                    backgroundColor: cc.dot,
+                    borderColor: cc.dot,
+                    pointRadius: 3, pointHoverRadius: 6
+                },
+                {
+                    label: 'Perfect Prediction Line',
+                    data: [{x:0,y:0},{x:60,y:60}],
+                    type: 'line',
+                    borderColor: 'rgba(255,255,255,0.15)',
+                    borderDash: [6,4],
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Actual Delay (Mins)', color: cc.label }, grid: { color: cc.grid } },
+                    y: { title: { display: true, text: 'Predicted Delay (Mins)', color: cc.label }, grid: { color: cc.grid } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // ── Streaming Logs ──
+        const logsContainer = document.getElementById('terminal-logs');
+        const logMessages = [
+            "[INFO] Telemetry batch synced from 38 drivers.",
+            "[INFO] Heartbeat OK. All worker nodes active.",
+            "[WARN] Elevated latency on route optimization module.",
+            "[INFO] ML Inference: 405 predictions/sec.",
+            "[ERROR] Map tile cache miss rate > 15%.",
+            "[INFO] Dispatcher dashboard connected via WSS.",
+            "[INFO] Geofence trigger: SHIP-042 breached 2km zone.",
+            "[WARN] Twilio SMS rate at 82% of limit.",
+            "[INFO] Eco-consolidation: 2 packages merged for route R-14.",
+            "[INFO] Model v3.2 prediction confidence: 94.2% avg."
+        ];
+
+        setInterval(() => {
+            const now = new Date();
+            const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}.${String(now.getMilliseconds()).padStart(3,'0')}`;
+            const msg = logMessages[Math.floor(Math.random() * logMessages.length)];
+            let cls = 'log-level-info';
+            if (msg.includes('[WARN]')) cls = 'log-level-warn';
+            if (msg.includes('[ERROR]')) cls = 'log-level-err';
+
+            const el = document.createElement('div');
+            el.className = 'log-line';
+            el.innerHTML = `<span class="log-time">${ts}</span> <span class="${cls}">${msg}</span>`;
+            logsContainer.appendChild(el);
+            if (logsContainer.children.length > 50) logsContainer.removeChild(logsContainer.firstChild);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }, 1500);
+
+        // ── Kill Switch Logic ──
+        function toggleKS(id) {
+            const toggle = document.getElementById('ks-' + id);
+            const status = document.getElementById('ks-' + id + '-status');
+            const isOff = toggle.classList.toggle('off');
+            status.textContent = isOff ? 'DISABLED' : 'ACTIVE';
+            status.className = 'ks-status ' + (isOff ? 'off' : 'on');
+
+            const names = { ai: 'AI Predictive Mode', sms: 'Spatial SMS', traffic: 'Live Traffic Feed', weather: 'Weather Data', reroute: 'Auto Rerouting' };
+            if (isOff) {
+                alert(`🔴 ${names[id]} DISABLED. System falling back to safe mode for this subsystem.`);
+            } else {
+                alert(`🟢 ${names[id]} RESTORED. Full pipeline active.`);
+            }
+        }
+    </script>
+
+</body>
+
+</html>

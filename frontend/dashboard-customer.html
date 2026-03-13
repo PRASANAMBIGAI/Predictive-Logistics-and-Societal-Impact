@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Delivery | LogiPredict AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dashboards.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <style>
+        /* Override the global overflow:hidden from styles.css */
+        body {
+            overflow-y: auto !important;
+            height: auto !important;
+        }
+
+        /* ── Layout ── */
+        .cust-layout {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 60px);
+            padding: 1.25rem;
+            gap: 1.25rem;
+            overflow-y: auto;
+        }
+
+        /* ── Top Row: Status + Map ── */
+        .top-row {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 1.25rem;
+            min-height: 380px;
+        }
+
+        /* ── Status Column ── */
+        .status-col {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .eta-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .status-pill.in-transit { background: rgba(0,230,118,0.12); color: var(--success); }
+        .status-pill.at-risk { background: rgba(255,179,0,0.12); color: var(--warning); }
+
+        .eta-large {
+            font-size: 2.4rem;
+            font-weight: 800;
+            margin: 0.75rem 0 0.3rem;
+        }
+
+        .eta-window {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .arrival-box {
+            margin-top: 1rem;
+            background: rgba(0,230,118,0.06);
+            border: 1px solid rgba(0,230,118,0.2);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            font-size: 0.88rem;
+        }
+
+        .arrival-box strong {
+            color: var(--success);
+        }
+
+        /* Alert Banner */
+        .alert-banner {
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            animation: slideDown 0.35s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .alert-banner.warning { background: rgba(255,179,0,0.08); border: 1px solid rgba(255,179,0,0.25); }
+        .alert-banner .a-icon { font-size: 1.4rem; flex-shrink: 0; }
+        .alert-banner h4 { margin: 0 0 3px; font-size: 0.9rem; }
+        .alert-banner p { margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
+
+        /* ETA Timeline */
+        .timeline-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            flex: 1;
+            overflow-y: auto;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .timeline-card h3 {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0 0 0.75rem;
+        }
+
+        .t-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.4rem 0;
+            position: relative;
+        }
+
+        .t-item:not(:last-child) {
+            border-left: 2px solid var(--border);
+            margin-left: 6px;
+            padding-left: calc(0.75rem + 6px);
+            padding-bottom: 0.75rem;
+        }
+
+        .t-item:last-child {
+            margin-left: 6px;
+            padding-left: calc(0.75rem + 6px);
+        }
+
+        .t-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            flex-shrink: 0; position: absolute; left: 2px;
+        }
+
+        .t-dot.done { background: var(--success); }
+        .t-dot.now { background: var(--primary); animation: pulse 1.5s infinite; }
+        .t-dot.wait { background: var(--border); }
+
+        @keyframes pulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(255,71,19,0.4); }
+            50% { box-shadow: 0 0 0 5px rgba(255,71,19,0); }
+        }
+
+        .t-time { font-size: 0.75rem; color: var(--text-muted); }
+        .t-label { font-weight: 600; font-size: 0.88rem; }
+        .t-detail { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* ── Map Section ── */
+        .prox-map {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .prox-map #cust-map { width: 100%; height: 100%; min-height: 380px; }
+
+        .geofence-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 600;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            backdrop-filter: blur(6px);
+        }
+
+        .geofence-badge i { color: var(--success); margin-right: 4px; }
+
+        /* ── Feature Panels Row ── */
+        .panels-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-head {
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            font-size: 0.82rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .panel-head i { color: var(--primary); }
+
+        .panel-body {
+            padding: 1rem 1.25rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .panel-body p.desc {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* Action Buttons */
+        .btn-feat {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: var(--primary-glow);
+            border: 1px solid rgba(255,71,19,0.15);
+            color: var(--text-light);
+            padding: 0.7rem 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            width: 100%;
+            text-align: left;
+        }
+
+        .btn-feat:hover {
+            background: rgba(255,71,19,0.12);
+            border-color: var(--primary);
+        }
+
+        .btn-feat i { font-size: 1rem; width: 20px; text-align: center; }
+
+        .btn-feat.green { background: rgba(0,230,118,0.06); border-color: rgba(0,230,118,0.2); }
+        .btn-feat.green:hover { background: rgba(0,230,118,0.12); border-color: var(--success); }
+        .btn-feat.green i { color: var(--success); }
+
+        .btn-feat.blue { background: rgba(99,102,241,0.06); border-color: rgba(99,102,241,0.2); }
+        .btn-feat.blue:hover { background: rgba(99,102,241,0.12); border-color: #6366f1; }
+        .btn-feat.blue i { color: #6366f1; }
+
+        /* Textarea inside panels */
+        .notes-box {
+            width: 100%;
+            background: var(--hover-bg);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            border-radius: 8px;
+            padding: 0.65rem 0.85rem;
+            font-family: inherit;
+            font-size: 0.82rem;
+            resize: vertical;
+            min-height: 60px;
+            transition: border-color 0.2s;
+        }
+
+        .notes-box:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .notes-box::placeholder { color: var(--text-muted); }
+
+        /* Eco Offer */
+        .eco-offer {
+            background: rgba(0,230,118,0.05);
+            border: 1px dashed rgba(0,230,118,0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .eco-offer .eco-reward {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--success);
+            margin: 0.5rem 0 0.25rem;
+        }
+
+        .eco-offer .eco-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        /* Toggle Switches */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .toggle-row:last-child { border-bottom: none; }
+
+        .toggle-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .toggle-switch {
+            width: 42px; height: 22px;
+            background: var(--border);
+            border-radius: 50px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active { background: var(--primary); }
+
+        .toggle-switch::after {
+            content: '';
+            width: 18px; height: 18px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px; left: 2px;
+            transition: left 0.3s;
+        }
+
+        .toggle-switch.active::after { left: 22px; }
+
+        /* Range selector */
+        .range-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .range-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-light);
+            font-family: inherit;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .range-btn.selected {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .range-btn:hover:not(.selected) {
+            border-color: var(--text-muted);
+            background: var(--hover-bg);
+        }
+
+        /* ── Bottom Row: 2 Panels ── */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+
+        @media (max-width: 1100px) {
+            .top-row { grid-template-columns: 1fr; }
+            .panels-row { grid-template-columns: 1fr; }
+            .bottom-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Topbar -->
+    <div class="topbar">
+        <a href="index.html" class="logo"><i class="fa-solid fa-cube"></i> LOGIPREDICT AI</a>
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+            Order: <strong style="color: var(--text-light);">SHIP-042</strong>
+        </div>
+        <div class="user-profile">
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+                <i class="fa-solid fa-sun icon-sun"></i>
+                <i class="fa-solid fa-moon icon-moon"></i>
+            </button>
+            <div style="width:34px;height:34px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;color:white;">JD</div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="cust-layout">
+
+        <!-- ════════════════════════════════════════════════════════
+             SECTION 1: LIVE SPATIAL TRACKING
+             ════════════════════════════════════════════════════════ -->
+        <div class="top-row">
+
+            <!-- Left: ETA + Alert + Timeline -->
+            <div class="status-col">
+                <div class="eta-card">
+                    <span class="status-pill at-risk">At Risk — AI Monitoring</span>
+                    <div class="eta-large">~18 Mins</div>
+                    <div class="eta-window">Active Arrival Window: <strong>2:37 PM – 2:52 PM</strong></div>
+                    <div class="arrival-box">
+                        <i class="fa-solid fa-clock"></i> Precise 15-min window recalculating in real-time based on traffic & earlier stops.
+                    </div>
+                </div>
+
+                <!-- Transparency Alert -->
+                <div class="alert-banner warning">
+                    <div class="a-icon">⚠️</div>
+                    <div>
+                        <h4>Transparency Alert: Heavy Traffic</h4>
+                        <p>Your delivery is delayed by <strong>12–18 min</strong> due to congestion on NH-44 near Hebbal Flyover. AI rerouted your driver via alternate road. New ETA: <strong>2:37 PM – 2:52 PM</strong>.</p>
+                    </div>
+                </div>
+
+                <!-- ETA Timeline -->
+                <div class="timeline-card">
+                    <h3><i class="fa-solid fa-clock-rotate-left"></i> ETA History</h3>
+                    <div class="t-item">
+                        <div class="t-dot done"></div>
+                        <div>
+                            <div class="t-time">1:30 PM</div>
+                            <div class="t-label">Order Dispatched</div>
+                            <div class="t-detail">Original ETA: 2:15 PM</div>
+                        </div>
+                    </div>
+                    <div class="t-item">
+                        <div class="t-dot done"></div>
+                        <div>
+                            <div class="t-time">1:48 PM</div>
+                            <div class="t-label">AI Detected Traffic on NH-44</div>
+                            <div class="t-detail">ETA updated → 2:35 PM (+20 min)</div>
+                        </div>
+                    </div>
+                    <div class="t-item">
+                        <div class="t-dot done"></div>
+                        <div>
+                            <div class="t-time">1:56 PM</div>
+                            <div class="t-label">Driver Rerouted via Bellary Rd</div>
+                            <div class="t-detail">ETA recovered → 2:37 PM (saved 8 min)</div>
+                        </div>
+                    </div>
+                    <div class="t-item">
+                        <div class="t-dot now"></div>
+                        <div>
+                            <div class="t-time">Now — 2:19 PM</div>
+                            <div class="t-label">1.8 km away — Geofence Active</div>
+                            <div class="t-detail">Window: 2:37 PM – 2:52 PM (confidence range)</div>
+                        </div>
+                    </div>
+                    <div class="t-item">
+                        <div class="t-dot wait"></div>
+                        <div>
+                            <div class="t-time">~2:40 PM</div>
+                            <div class="t-label">Expected Delivery</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Proximity Map -->
+            <div class="prox-map">
+                <div class="geofence-badge"><i class="fa-solid fa-circle"></i> GEOFENCE ACTIVE — 1.8 km</div>
+                <div id="cust-map"></div>
+            </div>
+
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════
+             SECTION 2, 3, 4: Feature Panels
+             ════════════════════════════════════════════════════════ -->
+        <div class="panels-row">
+
+            <!-- Panel: In-Flight Delivery Control -->
+            <div class="panel">
+                <div class="panel-head"><i class="fa-solid fa-gamepad"></i> In-Flight Delivery Control</div>
+                <div class="panel-body">
+                    <p class="desc">Take control while your package is still moving. Redirect delivery or update instructions in real-time.</p>
+
+                    <button class="btn-feat" onclick="alert('📍 Live Intercept activated! Share your GPS to meet the driver at any location along the route.')">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                        Trigger Live Intercept
+                    </button>
+
+                    <div>
+                        <label style="font-size:0.78rem; font-weight:600; display:block; margin-bottom:0.35rem;">
+                            <i class="fa-solid fa-pen-to-square" style="color:var(--primary)"></i> Final 50 Feet Instructions
+                        </label>
+                        <textarea class="notes-box" placeholder="e.g. The baby is sleeping, please don't ring the bell. Leave it behind the blue planter. Gate code: 4921"></textarea>
+                        <button class="btn-feat" style="margin-top: 0.5rem;" onclick="alert('✅ Instructions sent to driver! They will see this when they arrive.')">
+                            <i class="fa-solid fa-paper-plane"></i> Send to Driver
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel: Sustainability & Rewards -->
+            <div class="panel">
+                <div class="panel-head"><i class="fa-solid fa-leaf"></i> Dynamic Eco-Consolidation</div>
+                <div class="panel-body">
+                    <p class="desc">Our AI found a greener delivery route. Delay your package 24h to consolidate with a neighbor's delivery and earn rewards.</p>
+
+                    <div class="eco-offer">
+                        <div style="font-size: 2rem;">🌱</div>
+                        <div class="eco-reward">$2.00 Cashback</div>
+                        <div class="eco-sub">+ 150 Loyalty Points · Saves 0.8 kg CO₂</div>
+                        <button class="btn-feat green" onclick="alert('🎉 Smart-Delay Bounty claimed! Your package will arrive tomorrow with a consolidated route. $2.00 cashback applied.')">
+                            <i class="fa-solid fa-hand-holding-heart"></i> Claim Smart-Delay Bounty
+                        </button>
+                    </div>
+
+                    <div style="text-align: center; font-size: 0.78rem; color: var(--text-muted);">
+                        <i class="fa-solid fa-truck-fast"></i> Your neighbor on 4th Cross also has a delivery scheduled tomorrow.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel: Security Management -->
+            <div class="panel">
+                <div class="panel-head"><i class="fa-solid fa-shield-halved"></i> Security & Anti-Piracy</div>
+                <div class="panel-body">
+                    <p class="desc">Protect high-value packages with context-aware secure drops and initiate returns piggyback-style.</p>
+
+                    <button class="btn-feat blue" onclick="alert('🔐 Safe Drop authorized! Package will be rerouted to Indiranagar Smart Locker (450m from your home). You have 48h to collect.')">
+                        <i class="fa-solid fa-lock"></i>
+                        Approve Context-Aware Safe Drop
+                    </button>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); padding-left: 0.5rem;">
+                        <i class="fa-solid fa-box"></i> Nearest Smart Locker: Indiranagar Hub (450m)
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.25rem;">
+                        <button class="btn-feat" onclick="alert('📦 Piggyback Return flagged! Driver TRK-B207 (arriving at 2:40 PM) will be alerted to pick up your return item simultaneously.')">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            Initiate Piggyback Return
+                        </button>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; padding-left: 0.5rem;">
+                            Your arriving driver can pick up a return package on the same trip.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════
+             SECTION 5: Settings & Preferences
+             ════════════════════════════════════════════════════════ -->
+        <div class="bottom-row">
+
+            <!-- Spatial Triggers -->
+            <div class="panel">
+                <div class="panel-head"><i class="fa-solid fa-satellite-dish"></i> Spatial Trigger Settings</div>
+                <div class="panel-body">
+                    <p class="desc">Customize when you receive your proximity alert. Choose how close the driver must be before you're notified.</p>
+
+                    <div>
+                        <label style="font-size: 0.78rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Alert Distance</label>
+                        <div class="range-group">
+                            <button class="range-btn" onclick="selectRange(this)">5 km</button>
+                            <button class="range-btn selected" onclick="selectRange(this)">2 km</button>
+                            <button class="range-btn" onclick="selectRange(this)">1 km</button>
+                            <button class="range-btn" onclick="selectRange(this)">500 m</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 0.5rem;">
+                        <label style="font-size: 0.78rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Communication Channel</label>
+                        <div class="toggle-row">
+                            <span class="toggle-label"><i class="fa-solid fa-comment-sms" style="color:var(--primary); margin-right:6px;"></i> SMS</span>
+                            <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                        <div class="toggle-row">
+                            <span class="toggle-label"><i class="fa-brands fa-whatsapp" style="color:#25D366; margin-right:6px;"></i> WhatsApp</span>
+                            <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                        <div class="toggle-row">
+                            <span class="toggle-label"><i class="fa-solid fa-bell" style="color:#6366f1; margin-right:6px;"></i> Push Notification</span>
+                            <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions & Help -->
+            <div class="panel">
+                <div class="panel-head"><i class="fa-solid fa-bolt"></i> Quick Actions</div>
+                <div class="panel-body">
+                    <button class="btn-feat" onclick="alert('AI has already pre-filed an issue for this delay. Support team notified. Ref: #SUP-8842')">
+                        <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning)"></i>
+                        Report Issue (AI Pre-filed)
+                    </button>
+                    <button class="btn-feat green" onclick="alert('Connecting you to WhatsApp support immediately...')">
+                        <i class="fa-brands fa-whatsapp"></i>
+                        Live Chat Support
+                    </button>
+                    <button class="btn-feat blue" onclick="alert('Your delivery rating has been saved. Thank you!')">
+                        <i class="fa-solid fa-star"></i>
+                        Rate Previous Delivery
+                    </button>
+                    <button class="btn-feat" onclick="window.location.href='dashboard-dispatcher.html'">
+                        <i class="fa-solid fa-tower-observation"></i>
+                        View Operations Control Tower
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/theme.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // Initialize proximity map
+        const custMap = L.map('cust-map', { zoomControl: false }).setView([12.9816, 77.5946], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(custMap);
+        L.control.zoom({ position: 'topright' }).addTo(custMap);
+
+        // Customer home marker
+        const homeIcon = L.divIcon({
+            className: '',
+            html: '<div style="width:20px;height:20px;background:#6366f1;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+            iconSize: [20, 20], iconAnchor: [10, 10]
+        });
+        L.marker([12.9716, 77.5946], { icon: homeIcon }).addTo(custMap).bindPopup('<strong>Your Home</strong><br>Indiranagar, Bangalore');
+
+        // Geofence circle (2km radius)
+        L.circle([12.9716, 77.5946], {
+            radius: 2000, color: '#6366f1', fillColor: '#6366f1',
+            fillOpacity: 0.06, weight: 2, dashArray: '8 4'
+        }).addTo(custMap);
+
+        // Driver (truck) marker - simulated 1.8km away
+        const truckIcon = L.divIcon({
+            className: '',
+            html: '<div style="width:28px;height:28px;background:#ff4713;border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🚚</div>',
+            iconSize: [28, 28], iconAnchor: [14, 14]
+        });
+        const driverMarker = L.marker([12.9916, 77.5946], { icon: truckIcon }).addTo(custMap);
+        driverMarker.bindPopup('<strong>Driver: Ravi K.</strong><br>Vehicle: TRK-B207<br>ETA: ~18 min');
+
+        // Simulated driver movement towards home
+        let driverLat = 12.9916;
+        setInterval(() => {
+            driverLat -= 0.0003;
+            if (driverLat < 12.9716) driverLat = 12.9916;
+            driverMarker.setLatLng([driverLat, 77.5946 + (Math.random() - 0.5) * 0.001]);
+        }, 2000);
+
+        // Range selector
+        function selectRange(btn) {
+            document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            alert(`Spatial SMS alert distance set to ${btn.textContent.trim()}`);
+        }
+    </script>
+
+</body>
+
+</html>

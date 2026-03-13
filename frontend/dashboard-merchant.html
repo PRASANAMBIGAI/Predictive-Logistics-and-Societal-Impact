@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merchant Analytics Hub | LogiPredict AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dashboards.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { overflow-y: auto !important; height: auto !important; }
+
+        .m-layout {
+            padding: 1.25rem;
+            max-width: 1440px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* ── KPI Row ── */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+        }
+
+        .kpi {
+            background: linear-gradient(145deg, var(--card-bg), var(--primary-glow));
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+
+        .kpi-label {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.5rem;
+        }
+
+        .kpi-val {
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        .kpi-trend {
+            font-size: 0.78rem;
+            margin-top: 0.35rem;
+        }
+
+        .kpi-trend.up { color: var(--success); }
+        .kpi-trend.down { color: var(--danger); }
+        .kpi-trend.flat { color: var(--text-muted); }
+
+        /* ── Panel Card ── */
+        .m-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .m-head {
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .m-head i { color: var(--primary); }
+
+        .m-body {
+            padding: 1.25rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+
+        .m-body p.desc {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* ── Grid Rows ── */
+        .row-2 { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.25rem; }
+        .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; }
+        .row-2e { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+
+        /* ── Tables ── */
+        .m-table { width: 100%; border-collapse: collapse; }
+        .m-table th, .m-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+        .m-table th { color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        .m-table tr:hover td { background: var(--hover-bg); }
+
+        /* ── Buttons ── */
+        .btn-m {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-light);
+            font-family: inherit;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-m:hover { background: var(--hover-bg); border-color: var(--text-muted); }
+
+        .btn-m.primary { background: var(--primary); border-color: var(--primary); color: white; }
+        .btn-m.primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .btn-m.success { background: rgba(0,230,118,0.1); border-color: rgba(0,230,118,0.3); color: var(--success); }
+        .btn-m.success:hover { background: rgba(0,230,118,0.2); }
+
+        .btn-m.danger { background: rgba(255,23,68,0.08); border-color: rgba(255,23,68,0.25); color: var(--danger); }
+        .btn-m.danger:hover { background: rgba(255,23,68,0.15); }
+
+        /* ── Severity badges ── */
+        .sev { font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 50px; }
+        .sev.hard { background: rgba(255,23,68,0.12); color: var(--danger); }
+        .sev.med { background: rgba(255,179,0,0.12); color: var(--warning); }
+        .sev.low { background: rgba(0,230,118,0.12); color: var(--success); }
+
+        /* ── Eco Stat Cards ── */
+        .eco-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+        }
+
+        .eco-stat {
+            text-align: center;
+            padding: 1rem;
+            background: var(--hover-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .eco-stat .es-val { font-size: 1.6rem; font-weight: 800; }
+        .eco-stat .es-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.25rem; }
+
+        /* ── White-Label Preview ── */
+        .sms-preview {
+            background: var(--hover-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .sms-preview .sms-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .sms-preview .sms-logo {
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            background: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: 800; font-size: 0.85rem;
+        }
+
+        .sms-preview .sms-brand { font-weight: 700; font-size: 0.9rem; }
+        .sms-preview .sms-body { font-size: 0.88rem; line-height: 1.6; color: var(--text-muted); }
+        .sms-preview .sms-body strong { color: var(--text-light); }
+
+        /* ── API Key Box ── */
+        .api-key-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--hover-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.65rem 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        .api-key-box code { flex: 1; overflow-x: auto; }
+
+        /* ── Input ── */
+        .m-input {
+            background: var(--hover-bg);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.6rem 0.85rem;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            width: 100%;
+        }
+
+        .m-input:focus { outline: none; border-color: var(--primary); }
+
+        /* ── Color Swatches ── */
+        .color-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .swatch {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .swatch:hover { transform: scale(1.15); }
+        .swatch.selected { border-color: white; box-shadow: 0 0 0 2px var(--primary); }
+
+        /* ── Webhook log ── */
+        .wh-log {
+            max-height: 140px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--hover-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            line-height: 1.6;
+        }
+
+        .wh-log .wh-ok { color: var(--success); }
+        .wh-log .wh-time { color: var(--text-muted); opacity: 0.6; }
+
+        @media (max-width: 1100px) {
+            .kpi-row { grid-template-columns: repeat(3, 1fr); }
+            .row-2, .row-3, .row-2e { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 700px) {
+            .kpi-row { grid-template-columns: 1fr; }
+            .eco-stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Topbar -->
+    <div class="topbar">
+        <div class="logo"><i class="fa-solid fa-chart-line"></i> MERCHANT ANALYTICS HUB</div>
+        <div style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem;">
+            <span style="color: var(--text-muted);">Store:</span>
+            <strong style="color: var(--text-light);">Global Retail Inc.</strong>
+        </div>
+        <div class="user-profile">
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+                <i class="fa-solid fa-sun icon-sun"></i>
+                <i class="fa-solid fa-moon icon-moon"></i>
+            </button>
+            <a href="auth.html" style="color:var(--primary); text-decoration:none; font-size:0.85rem;">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <div class="m-layout">
+
+        <!-- ════════════════════════════════════════════════════════
+             KPI ROW
+             ════════════════════════════════════════════════════════ -->
+        <div class="kpi-row">
+            <div class="kpi">
+                <div class="kpi-label"><i class="fa-solid fa-bullseye"></i> First-Attempt Rate</div>
+                <div class="kpi-val">98.4%</div>
+                <div class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +2.1% this week</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label"><i class="fa-solid fa-clock"></i> ETA Accuracy</div>
+                <div class="kpi-val">± 4 min</div>
+                <div class="kpi-trend flat">Stable</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label"><i class="fa-solid fa-headset"></i> WISMO Deflection</div>
+                <div class="kpi-val" style="color: var(--success);">92%</div>
+                <div class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> -63% tickets vs baseline</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label"><i class="fa-solid fa-sack-dollar"></i> Costs Saved</div>
+                <div class="kpi-val" style="color: var(--success);">$14,250</div>
+                <div class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +$3,100 vs last month</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label"><i class="fa-solid fa-leaf"></i> CO₂ Reduced</div>
+                <div class="kpi-val" style="color: #4ade80;">48 kg</div>
+                <div class="kpi-trend up"><i class="fa-solid fa-arrow-trend-up"></i> 24 consolidations</div>
+            </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════
+             ROW 1: WISMO Chart + Live Exceptions
+             ════════════════════════════════════════════════════════ -->
+        <div class="row-2">
+
+            <!-- 1. WISMO Deflection / Anxiety Reduction -->
+            <div class="m-card">
+                <div class="m-head"><i class="fa-solid fa-heart-pulse"></i> WISMO Deflection — Anxiety Reduction Index</div>
+                <div class="m-body">
+                    <p class="desc">Spatial SMS alerts sent vs. inbound support tickets. When alerts go out, tickets drop to near zero.</p>
+                    <div style="position: relative; height: 280px; width: 100%;">
+                        <canvas id="wismoChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Proactive Customer Recovery -->
+            <div class="m-card">
+                <div class="m-head"><i class="fa-solid fa-triangle-exclamation"></i> Live Exceptions — Customer Recovery</div>
+                <div class="m-body" style="padding: 0;">
+                    <div style="padding: 1rem 1.25rem;">
+                        <p class="desc">AI-flagged failures. Click to trigger instant apology + 15% discount before the customer complains.</p>
+                    </div>
+                    <div style="overflow-y: auto; max-height: 260px;">
+                        <table class="m-table">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Issue</th>
+                                    <th>Severity</th>
+                                    <th>Recovery</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight:600;">Sarah Jenkins</div>
+                                        <div style="font-size:0.75rem; color:var(--text-muted);">#ORD-9921</div>
+                                    </td>
+                                    <td style="font-size:0.85rem;">Truck breakdown · +24h delay</td>
+                                    <td><span class="sev hard">HARD FAILURE</span></td>
+                                    <td>
+                                        <button class="btn-m danger" onclick="alert('🎁 Automated apology email sent to Sarah Jenkins with 15% discount code SORRY15. Customer notified of revised ETA.')">
+                                            <i class="fa-solid fa-gift"></i> 15% Recovery
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight:600;">Michael Chang</div>
+                                        <div style="font-size:0.75rem; color:var(--text-muted);">#ORD-1045</div>
+                                    </td>
+                                    <td style="font-size:0.85rem;">Weather delay · +45 min</td>
+                                    <td><span class="sev med">WEATHER</span></td>
+                                    <td>
+                                        <button class="btn-m" onclick="alert('💬 AI WhatsApp check-in sent to Michael Chang with updated ETA and weather explanation.')">
+                                            <i class="fa-brands fa-whatsapp" style="color:#25d366;"></i> Chat
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight:600;">Priya Sharma</div>
+                                        <div style="font-size:0.75rem; color:var(--text-muted);">#ORD-3387</div>
+                                    </td>
+                                    <td style="font-size:0.85rem;">Traffic congestion · +25 min</td>
+                                    <td><span class="sev med">TRAFFIC</span></td>
+                                    <td>
+                                        <button class="btn-m" onclick="alert('📧 Proactive ETA update email sent to Priya Sharma with live tracking link.')">
+                                            <i class="fa-regular fa-envelope"></i> Update
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight:600;">David Wilson</div>
+                                        <div style="font-size:0.75rem; color:var(--text-muted);">#ORD-4512</div>
+                                    </td>
+                                    <td style="font-size:0.85rem;">Safe Drop to locker · +2h</td>
+                                    <td><span class="sev low">REROUTED</span></td>
+                                    <td>
+                                        <button class="btn-m success" onclick="alert('✅ David Wilson notified: Package at Smart Locker. Access code sent via SMS.')">
+                                            <i class="fa-solid fa-check"></i> Resolved
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight:600;">Angela Torres</div>
+                                        <div style="font-size:0.75rem; color:var(--text-muted);">#ORD-5580</div>
+                                    </td>
+                                    <td style="font-size:0.85rem;">Dock congestion · +35 min</td>
+                                    <td><span class="sev med">WAREHOUSE</span></td>
+                                    <td>
+                                        <button class="btn-m danger" onclick="alert('🎁 Automated apology sent to Angela Torres with 15% discount. Transparency Alert dispatched.')">
+                                            <i class="fa-solid fa-gift"></i> 15% Recovery
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════
+             ROW 2: Eco-Consolidation + White-Label + Current Deliveries
+             ════════════════════════════════════════════════════════ -->
+        <div class="row-3">
+
+            <!-- 3. Eco-Consolidation ROI -->
+            <div class="m-card">
+                <div class="m-head"><i class="fa-solid fa-leaf"></i> Sustainability Ledger</div>
+                <div class="m-body">
+                    <p class="desc">Track ROI from Dynamic Eco-Consolidation. Customers who opted into "Smart-Delay Bounty" save you shipping fees.</p>
+
+                    <div class="eco-stats">
+                        <div class="eco-stat">
+                            <div class="es-val" style="color: var(--success);">24</div>
+                            <div class="es-label">Consolidations</div>
+                        </div>
+                        <div class="eco-stat">
+                            <div class="es-val" style="color: var(--success);">$1,440</div>
+                            <div class="es-label">Shipping Saved</div>
+                        </div>
+                        <div class="eco-stat">
+                            <div class="es-val" style="color: #4ade80;">48 kg</div>
+                            <div class="es-label">CO₂ Reduced</div>
+                        </div>
+                    </div>
+
+                    <div style="position:relative; height: 160px; width:100%;">
+                        <canvas id="ecoChart"></canvas>
+                    </div>
+
+                    <div style="font-size: 0.78rem; color: var(--text-muted); text-align: center;">
+                        <i class="fa-solid fa-arrow-trend-up" style="color:var(--success);"></i>
+                        42% of eligible customers opted into Smart-Delay this month
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. White-Label Final 50 Feet -->
+            <div class="m-card">
+                <div class="m-head"><i class="fa-solid fa-palette"></i> White-Label — Final 50 Feet</div>
+                <div class="m-body">
+                    <p class="desc">Customize the Spatial SMS your customers receive. Upload your logo, pick brand colors, and set the message tone.</p>
+
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:600; display:block; margin-bottom:0.35rem;">Brand Name</label>
+                        <input type="text" class="m-input" value="Fresh Roast Coffee Co." id="brandName" oninput="updatePreview()" />
+                    </div>
+
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:600; display:block; margin-bottom:0.35rem;">Brand Color</label>
+                        <div class="color-row">
+                            <div class="swatch selected" style="background:#ff4713;" onclick="pickColor(this, '#ff4713')"></div>
+                            <div class="swatch" style="background:#6366f1;" onclick="pickColor(this, '#6366f1')"></div>
+                            <div class="swatch" style="background:#059669;" onclick="pickColor(this, '#059669')"></div>
+                            <div class="swatch" style="background:#d946ef;" onclick="pickColor(this, '#d946ef')"></div>
+                            <div class="swatch" style="background:#0ea5e9;" onclick="pickColor(this, '#0ea5e9')"></div>
+                            <div class="swatch" style="background:#1e293b;" onclick="pickColor(this, '#1e293b')"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:600; display:block; margin-bottom:0.35rem;">Message Tone</label>
+                        <select class="m-input" id="tonePicker" onchange="updatePreview()">
+                            <option value="friendly">Friendly & Casual</option>
+                            <option value="professional">Professional</option>
+                            <option value="playful">Playful & Fun</option>
+                        </select>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                        <label style="font-size:0.72rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; display:block; margin-bottom:0.5rem;">Live Preview</label>
+                        <div class="sms-preview">
+                            <div class="sms-header">
+                                <div class="sms-logo" id="previewLogo">FR</div>
+                                <div class="sms-brand" id="previewBrand">Fresh Roast Coffee Co.</div>
+                            </div>
+                            <div class="sms-body" id="previewBody">
+                                Hey! Your <strong>fresh roasted coffee</strong> from <strong>Fresh Roast Coffee Co.</strong> is exactly <strong>1 km away</strong>. ☕ Get ready!
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-m primary" onclick="alert('✅ White-label settings saved! All future Spatial SMS will use your brand.')">
+                        <i class="fa-solid fa-save"></i> Save Brand Settings
+                    </button>
+                </div>
+            </div>
+
+            <!-- Active Deliveries Summary -->
+            <div class="m-card">
+                <div class="m-head"><i class="fa-solid fa-truck-fast"></i> Active Deliveries</div>
+                <div class="m-body" style="padding: 0;">
+                    <div style="overflow-y: auto; max-height: 520px;">
+                        <table class="m-table">
+                            <thead>
+                                <tr>
+                                    <th>Order</th>
+                                    <th>Customer</th>
+                                    <th>Status</th>
+                                    <th>ETA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-9921</td>
+                                    <td>Sarah J.</td>
+                                    <td><span class="sev hard">DELAYED</span></td>
+                                    <td>+24h</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-1045</td>
+                                    <td>Michael C.</td>
+                                    <td><span class="sev med">AT RISK</span></td>
+                                    <td>3:20 PM</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-2210</td>
+                                    <td>Anjali P.</td>
+                                    <td><span class="sev low">ON TIME</span></td>
+                                    <td>2:45 PM</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-3387</td>
+                                    <td>Priya S.</td>
+                                    <td><span class="sev med">AT RISK</span></td>
+                                    <td>3:05 PM</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-4410</td>
+                                    <td>Ravi K.</td>
+                                    <td><span class="sev low">ON TIME</span></td>
+                                    <td>2:30 PM</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-4512</td>
+                                    <td>David W.</td>
+                                    <td><span class="sev low">LOCKER</span></td>
+                                    <td>Collected</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-5580</td>
+                                    <td>Angela T.</td>
+                                    <td><span class="sev med">AT RISK</span></td>
+                                    <td>3:35 PM</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-6678</td>
+                                    <td>Neha R.</td>
+                                    <td><span class="sev low">ON TIME</span></td>
+                                    <td>2:55 PM</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-7712</td>
+                                    <td>Tom H.</td>
+                                    <td><span class="sev low">ON TIME</span></td>
+                                    <td>3:10 PM</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight:600;">#ORD-8845</td>
+                                    <td>Deepak M.</td>
+                                    <td><span class="sev low">ON TIME</span></td>
+                                    <td>3:25 PM</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════
+             ROW 3: API & Webhooks
+             ════════════════════════════════════════════════════════ -->
+        <div class="row-2e">
+
+            <!-- 5. API Management -->
+            <div class="m-card">
+                <div class="m-head"><i class="fa-solid fa-code"></i> API & Integration Keys</div>
+                <div class="m-body">
+                    <p class="desc">Connect your storefront directly into the LogiPredict AI ingestion pipeline. Generate keys for Shopify, WooCommerce, or custom integrations.</p>
+
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:600; display:block; margin-bottom:0.35rem;">Live API Key</label>
+                        <div class="api-key-box">
+                            <code>lp_live_sk_7f8a9b2c3d4e5f6a7b8c9d0e1f2a3b4c</code>
+                            <button class="btn-m" onclick="navigator.clipboard.writeText('lp_live_sk_7f8a9b2c3d4e5f6a7b8c9d0e1f2a3b4c'); alert('📋 API key copied!')">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:600; display:block; margin-bottom:0.35rem;">Test API Key</label>
+                        <div class="api-key-box">
+                            <code>lp_test_sk_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6</code>
+                            <button class="btn-m" onclick="navigator.clipboard.writeText('lp_test_sk_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6'); alert('📋 Test key copied!')">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+                        <button class="btn-m primary" onclick="alert('🔑 New API key generated: lp_live_sk_' + Math.random().toString(36).substr(2,32))">
+                            <i class="fa-solid fa-rotate"></i> Regenerate Key
+                        </button>
+                        <button class="btn-m" onclick="alert('📄 Opening API documentation at docs.logipredict.ai/api/v2')">
+                            <i class="fa-solid fa-book"></i> API Docs
+                        </button>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                        <label style="font-size:0.75rem; font-weight:600; display:block; margin-bottom:0.5rem;">Platform Integrations</label>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button class="btn-m success" onclick="alert('🟢 Shopify integration is active and syncing 142 products.')">
+                                <i class="fa-brands fa-shopify"></i> Shopify — Connected ✓
+                            </button>
+                            <button class="btn-m" onclick="alert('🔗 Redirecting to WooCommerce plugin setup...')">
+                                <i class="fa-brands fa-wordpress"></i> WooCommerce
+                            </button>
+                            <button class="btn-m" onclick="alert('⚙️ Custom webhook setup. POST your order payloads to: https://api.logipredict.ai/v2/ingest')">
+                                <i class="fa-solid fa-plug"></i> Custom API
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Webhook Activity Log -->
+            <div class="m-card">
+                <div class="m-head"><i class="fa-solid fa-tower-broadcast"></i> Webhook Activity Log</div>
+                <div class="m-body">
+                    <p class="desc">Live feed of webhook events between your store and the LogiPredict AI pipeline.</p>
+
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:600; display:block; margin-bottom:0.35rem;">Webhook Endpoint</label>
+                        <div class="api-key-box">
+                            <code>https://api.logipredict.ai/v2/webhook/globalretail</code>
+                            <button class="btn-m" onclick="alert('📋 Endpoint copied!')">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:600; display:block; margin-bottom:0.35rem;">Event Subscriptions</label>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <span style="font-size:0.75rem; background:rgba(0,230,118,0.08); color:var(--success); padding:3px 10px; border-radius:50px; font-weight:600;">order.created ✓</span>
+                            <span style="font-size:0.75rem; background:rgba(0,230,118,0.08); color:var(--success); padding:3px 10px; border-radius:50px; font-weight:600;">delivery.updated ✓</span>
+                            <span style="font-size:0.75rem; background:rgba(0,230,118,0.08); color:var(--success); padding:3px 10px; border-radius:50px; font-weight:600;">delay.detected ✓</span>
+                            <span style="font-size:0.75rem; background:rgba(0,230,118,0.08); color:var(--success); padding:3px 10px; border-radius:50px; font-weight:600;">eta.changed ✓</span>
+                            <span style="font-size:0.75rem; background:var(--hover-bg); color:var(--text-muted); padding:3px 10px; border-radius:50px; font-weight:600;">return.initiated</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:600; display:block; margin-bottom:0.35rem;">Recent Events</label>
+                        <div class="wh-log">
+                            <div><span class="wh-time">14:42:08</span> <span class="wh-ok">200</span> POST /webhook → order.created #ORD-8845</div>
+                            <div><span class="wh-time">14:41:55</span> <span class="wh-ok">200</span> POST /webhook → delivery.updated #ORD-7712</div>
+                            <div><span class="wh-time">14:41:22</span> <span class="wh-ok">200</span> POST /webhook → eta.changed #ORD-3387 (+25min)</div>
+                            <div><span class="wh-time">14:40:18</span> <span class="wh-ok">200</span> POST /webhook → delay.detected #ORD-9921 (HARD)</div>
+                            <div><span class="wh-time">14:39:45</span> <span class="wh-ok">200</span> POST /webhook → delivery.updated #ORD-2210</div>
+                            <div><span class="wh-time">14:38:30</span> <span class="wh-ok">200</span> POST /webhook → order.created #ORD-6678</div>
+                            <div><span class="wh-time">14:37:12</span> <span class="wh-ok">200</span> POST /webhook → eta.changed #ORD-1045 (+45min)</div>
+                        </div>
+                    </div>
+
+                    <button class="btn-m" onclick="alert('🧪 Test webhook sent to endpoint. Check your server logs for payload.')">
+                        <i class="fa-solid fa-paper-plane"></i> Send Test Webhook
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/theme.js"></script>
+    <script>
+        // ── Chart Colors ──
+        function getCC() {
+            const t = document.documentElement.getAttribute('data-theme');
+            return {
+                grid: t === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)',
+                tick: t === 'light' ? '#64748b' : '#8a96a3'
+            };
+        }
+
+        // ── 1. WISMO Deflection Chart ──
+        const cc = getCC();
+        const ctx1 = document.getElementById('wismoChart').getContext('2d');
+        const gradSMS = ctx1.createLinearGradient(0, 0, 0, 300);
+        gradSMS.addColorStop(0, 'rgba(0,230,118,0.35)');
+        gradSMS.addColorStop(1, 'rgba(0,230,118,0)');
+
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [
+                    {
+                        label: 'Spatial SMS Alerts Sent',
+                        data: [50, 80, 150, 250, 320, 400, 450],
+                        borderColor: '#00e676',
+                        backgroundColor: gradSMS,
+                        fill: true, tension: 0.4, borderWidth: 2,
+                        pointRadius: 3, pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Support Tickets (WISMO)',
+                        data: [100, 85, 60, 40, 25, 10, 2],
+                        borderColor: '#ff1744',
+                        backgroundColor: 'transparent',
+                        borderDash: [5, 5], tension: 0.4, borderWidth: 2,
+                        pointRadius: 3, pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'top', labels: { color: cc.tick, font: { family: 'Inter', size: 11 } } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: cc.grid }, ticks: { color: cc.tick } },
+                    x: { grid: { display: false }, ticks: { color: cc.tick } }
+                }
+            }
+        });
+
+        // ── 3. Eco-Consolidation Chart ──
+        const ctx2 = document.getElementById('ecoChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [
+                    {
+                        label: 'Consolidations',
+                        data: [4, 6, 5, 9],
+                        backgroundColor: 'rgba(0,230,118,0.5)',
+                        borderColor: '#00e676',
+                        borderWidth: 1, borderRadius: 4
+                    },
+                    {
+                        label: 'Shipping Saved ($)',
+                        data: [240, 360, 300, 540],
+                        backgroundColor: 'rgba(99,102,241,0.4)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1, borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'top', labels: { color: cc.tick, font: { family: 'Inter', size: 10 } } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: cc.grid }, ticks: { color: cc.tick, font: { size: 10 } } },
+                    x: { grid: { display: false }, ticks: { color: cc.tick, font: { size: 10 } } }
+                }
+            }
+        });
+
+        // ── White-Label Preview Logic ──
+        const tones = {
+            friendly: (brand) => `Hey! Your <strong>fresh roasted coffee</strong> from <strong>${brand}</strong> is exactly <strong>1 km away</strong>. ☕ Get ready!`,
+            professional: (brand) => `Your order from <strong>${brand}</strong> is <strong>1 km</strong> from delivery. Estimated arrival: <strong>2 minutes</strong>.`,
+            playful: (brand) => `🎉 Almost there! Your <strong>${brand}</strong> goodies are just <strong>1 km</strong> away — start doing your happy dance! 💃`
+        };
+
+        function updatePreview() {
+            const name = document.getElementById('brandName').value || 'Your Brand';
+            const tone = document.getElementById('tonePicker').value;
+            document.getElementById('previewBrand').textContent = name;
+            document.getElementById('previewLogo').textContent = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            document.getElementById('previewBody').innerHTML = tones[tone](name);
+        }
+
+        function pickColor(el, color) {
+            document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('previewLogo').style.background = color;
+        }
+    </script>
+
+</body>
+
+</html>

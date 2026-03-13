@@ -1,0 +1,87 @@
+# SPEC.md: Predictive Logistics Orchestrator MVP
+
+## 1. Project Overview
+This project is an MVP for a hackathon demonstrating an AI-driven logistics dashboard. It transitions supply chain management from reactive to proactive by predicting delivery delays in real-time based on traffic, weather, and warehouse metrics. 
+
+The MVP consists of a simulated live-tracking script, a machine learning prediction worker, and a web-based dispatcher dashboard that updates in real-time without page refreshes.
+
+## 2. Tech Stack
+* **Frontend:** HTML, CSS, vanilla JavaScript, Leaflet.js (for mapping), Firebase JS SDK.
+* **Backend / ML Worker:** Python (with `firebase-admin` and optional FastAPI for demo triggers).
+* **Database:** Firebase (Cloud Firestore).
+* **Machine Learning:** Scikit-Learn (Random Forest) or XGBoost.
+* **Simulation:** Python loop modifying Firestore documents.
+
+
+
+## 3. Database Structure (Firebase Firestore)
+
+The application requires two primary NoSQL collections to separate static route data from dynamic telematics data.
+
+### Collection 1: `shipments` (Static)
+Stores the baseline information for the day's deliveries. Document ID should be the `shipment_id` (e.g., "SHIP-001").
+* `origin_lat` (FLOAT)
+* `origin_lng` (FLOAT)
+* `dest_lat` (FLOAT)
+* `dest_lng` (FLOAT)
+* `planned_duration_mins` (INT)
+* `cargo_criticality` (INT, 1-10) - *Used for prioritization.*
+
+### Collection 2: `live_tracking` (Dynamic)
+Continuously updated by the simulator and read by the frontend. Document ID MUST match the corresponding `shipment_id`.
+* `current_lat` (FLOAT)
+* `current_lng` (FLOAT)
+* `current_speed_kmh` (FLOAT)
+* `weather_condition` (STRING) - *e.g., 'Clear', 'Rain', 'Storm'*
+* `traffic_index` (INT, 1-10)
+* `warehouse_backlog_index` (INT, 1-10) - *Simulates dock congestion at destination.*
+* `ml_delay_probability` (FLOAT) - *Updated by the ML worker.*
+* `ml_estimated_delay_mins` (INT) - *Updated by the ML worker.*
+* `last_updated` (TIMESTAMP)
+
+## 4. Machine Learning Pipeline
+
+The ML pipeline is lightweight and tabular for rapid inference.
+
+* **Model Type:** Random Forest Classifier (for probability of delay) and Regressor (for delay duration).
+* **Features (X):** `current_speed_kmh`, `weather_condition` (One-Hot Encoded), `traffic_index`, `warehouse_backlog_index`, `distance_remaining` (calculated from current lat/lng to dest lat/lng).
+* **Target (y):** `is_delayed` (Boolean), `delay_minutes` (Int).
+* **Requirement:** The agent must write a script (`ml_pipeline/generate_mock_data.py`) to generate 1,000 rows of synthetic historical training data (saved as a CSV) where high traffic + bad weather + high warehouse backlog strongly correlates with high delay minutes. Then, train and save the model as `model.pkl`.
+
+## 5. ML Worker & API Endpoints
+
+Because Firebase handles real-time data syncing natively, the backend operates as an event listener and a demo trigger.
+
+* **The ML Listener (`backend/ml_worker.py`):** A Python script using `firebase-admin`. It listens to the `live_tracking` collection using `on_snapshot`. Whenever a truck's location, weather, or traffic changes, it runs the new features through `model.pkl` and writes the `ml_delay_probability` and `ml_estimated_delay_mins` back to that same Firestore document.
+* **FastAPI Demo Trigger (Optional but recommended):** `POST /api/trigger_storm/{shipment_id}`. A simple endpoint that forces the `weather_condition` to 'Storm' and `traffic_index` to 10 in Firestore for a specific truck, allowing judges to instantly see the UI react.
+
+## 6. Frontend Dashboard (Dispatcher UI)
+
+A single-page application built for maximum visual impact, using the Firebase JS SDK for real-time updates.
+
+* **Map View:** Full-screen Leaflet.js map centered on a specific region (e.g., a major city or state).
+* **Real-time Markers:** Uses Firestore `onSnapshot()` to listen to the `live_tracking` collection. As coordinates change in the database, the Leaflet markers move on the screen automatically.
+    * **Green:** `ml_delay_probability` < 30% (On Time).
+    * **Yellow:** `ml_delay_probability` between 30% and 70% (At Risk).
+    * **Red:** `ml_delay_probability` > 70% (Delayed).
+* **Interactivity:** Clicking a marker opens a tooltip showing:
+    * Shipment ID
+    * Estimated Delay (Mins)
+    * **Delay Explainability:** e.g., "Primary Factors: Severe Weather, Warehouse Congestion."
+* **Control Panel:** A small floating UI card with a "Simulate Severe Storm" button to demonstrate the model's responsiveness.
+
+## 7. The Simulator Loop
+
+A standalone Python script (`simulation/simulator.py`) using `firebase-admin` that creates the illusion of a live system.
+* Runs in a `while True:` loop with `time.sleep(3)`.
+* Slightly increments the `current_lat` and `current_lng` of all active shipments toward their destination.
+* Randomly fluctuates speed and traffic by minor margins.
+* Updates the document state in the `live_tracking` Firestore collection using `doc_ref.update()`.
+
+## 8. Agent Execution Directives
+1.  Initialize the Firebase Admin SDK using a provided service account key (`credentials.json`).
+2.  Generate the synthetic ML dataset (CSV) and train the model (`model.pkl`).
+3.  Write a script to populate Firestore with initial mock data for `shipments` and `live_tracking`.
+4.  Develop the `ml_worker.py` to listen to Firestore, run predictions, and update the database.
+5.  Develop the HTML/JS frontend using Leaflet.js and Firebase JS SDK `onSnapshot()` to render the live map.
+6.  Build and run the simulator loop to verify full-stack, real-time data flow.

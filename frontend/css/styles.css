@@ -1,0 +1,657 @@
+/* ==========================================================================
+   Predictive Logistics MVP - Premium UI Styles
+   Dual Theme: Dark (Default) & Light Mode with Glassmorphism
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. CSS Variables & Theming
+   -------------------------------------------------------------------------- */
+:root {
+    /* DARK MODE (Default, user specifications) */
+    --bg-base: #131422;
+    --glass-bg: rgba(30, 33, 48, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: rgba(0, 0, 0, 0.3);
+
+    --status-green: #28C76F;
+    --status-yellow: #FF9F43;
+    --status-red: #EA5455;
+
+    --text-primary: #F8F8F8;
+    --text-secondary: #A0AEC0;
+
+    --accent-primary: #6366F1;
+    --accent-hover: #4F46E5;
+
+    --widget-bg: rgba(255, 255, 255, 0.03);
+    --widget-border: rgba(255, 255, 255, 0.05);
+
+    /* Shared Base Tokens */
+    --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+
+    --nav-height: 64px;
+}
+
+/* LIGHT MODE OVERRIDES */
+[data-theme="light"] {
+    --bg-base: #F8FAFC;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: rgba(0, 0, 0, 0.06);
+
+    --text-primary: #1E293B;
+    --text-secondary: #64748B;
+
+    --widget-bg: rgba(0, 0, 0, 0.02);
+    --widget-border: rgba(0, 0, 0, 0.04);
+}
+
+/* --------------------------------------------------------------------------
+   2. Base Reset & Layout
+   -------------------------------------------------------------------------- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    overflow: hidden;
+    /* Prevent scrolling, map is full screen */
+    height: 100vh;
+    width: 100vw;
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Typographic Defaults */
+h1,
+h2,
+h3,
+h4 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+ul {
+    list-style: none;
+}
+
+/* --------------------------------------------------------------------------
+   3. Top Navigation Bar (Glassmorphism)
+   -------------------------------------------------------------------------- */
+.top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-height);
+    z-index: 1000;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px;
+
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: 0 4px 20px var(--glass-shadow);
+    transition: all 0.4s ease;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nav-brand .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.nav-brand h1 {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.nav-brand .subtitle {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+}
+
+.nav-status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Theme Toggle Button */
+.btn-icon {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+    background: var(--widget-bg);
+    color: var(--text-primary);
+}
+
+[data-theme="light"] .icon-sun {
+    display: none;
+}
+
+[data-theme="dark"] .icon-moon,
+:root:not([data-theme="light"]) .icon-moon {
+    display: none;
+}
+
+
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: var(--widget-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+}
+
+.status-badge.live {
+    color: var(--status-green);
+    border-color: rgba(40, 199, 111, 0.3);
+    background: rgba(40, 199, 111, 0.05);
+}
+
+.status-badge.live .pulse {
+    background-color: var(--status-green);
+    animation: pulse-green 2s infinite;
+}
+
+.pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--text-secondary);
+}
+
+.clock {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--widget-bg);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   4. Map Container
+   -------------------------------------------------------------------------- */
+#map-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Leaflet Tile Tweaks */
+.leaflet-tile-pane {
+    filter: saturate(1.1) contrast(1.1);
+    transition: filter 0.4s ease;
+}
+
+[data-theme="light"] .leaflet-tile-pane {
+    /* No filter on light theme basemap if using light tiles */
+    filter: none;
+}
+
+/* --------------------------------------------------------------------------
+   5. Floating Dashboard Panel (Sidebar overlay)
+   -------------------------------------------------------------------------- */
+.dashboard-panel {
+    position: fixed;
+    top: calc(var(--nav-height) + 24px);
+    left: 24px;
+    bottom: 24px;
+    width: 360px;
+    z-index: 1000;
+
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+
+    /* User requested specific glassmorphism setup */
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 40px var(--glass-shadow);
+
+    overflow-y: auto;
+    transition: all 0.4s ease;
+}
+
+/* Firefox scrollbar hiding */
+.dashboard-panel {
+    scrollbar-width: none;
+}
+
+.dashboard-panel::-webkit-scrollbar {
+    display: none;
+}
+
+.section-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+/* --- Section 1: Top Overview Widgets --- */
+.overview-widgets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.widget {
+    background: var(--widget-bg);
+    border: 1px solid var(--widget-border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.widget:hover {
+    transform: translateY(-2px);
+    border-color: var(--glass-border);
+}
+
+.widget-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.widget-val {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Color classes for text/dots */
+.text-green {
+    color: var(--status-green);
+}
+
+.text-yellow {
+    color: var(--status-yellow);
+}
+
+.text-red {
+    color: var(--status-red);
+}
+
+.text-primary {
+    color: var(--text-primary);
+}
+
+/* --- Section 2: Active Shipments List --- */
+.shipment-list-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+}
+
+.shipment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.shipment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--widget-bg);
+    border: 1px solid var(--widget-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.shipment-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--glass-border);
+    transform: translateX(4px);
+}
+
+[data-theme="light"] .shipment-item:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.s-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.s-id {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.s-eta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    background: var(--widget-bg);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--glass-border);
+}
+
+/* --- Section 3: Demo Controls --- */
+.demo-controls select {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--widget-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: all 0.2s ease;
+}
+
+.demo-controls select:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.demo-controls select option {
+    background: var(--bg-base);
+    color: var(--text-primary);
+}
+
+.btn-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.btn {
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-family);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-red {
+    background: linear-gradient(135deg, var(--status-red), #C53030);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(234, 84, 85, 0.3);
+}
+
+.btn-red:hover {
+    box-shadow: 0 6px 16px rgba(234, 84, 85, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-red:active {
+    transform: translateY(1px);
+}
+
+.btn-green {
+    background: linear-gradient(135deg, var(--status-green), #22C55E);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(40, 199, 111, 0.3);
+}
+
+.btn-green:hover {
+    box-shadow: 0 6px 16px rgba(40, 199, 111, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-green:active {
+    transform: translateY(1px);
+}
+
+/* --- Section 4: Map Legend --- */
+.legend {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 16px;
+    border-top: 1px solid var(--glass-border);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.g-dot {
+    background-color: var(--status-green);
+    box-shadow: 0 0 8px var(--status-green);
+}
+
+.y-dot {
+    background-color: var(--status-yellow);
+    box-shadow: 0 0 8px var(--status-yellow);
+}
+
+.r-dot {
+    background-color: var(--status-red);
+    box-shadow: 0 0 8px var(--status-red);
+}
+
+/* --------------------------------------------------------------------------
+   6. Custom Map Markers & Tooltips
+   -------------------------------------------------------------------------- */
+.truck-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 16px;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    background-color: var(--text-secondary);
+    /* Default */
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.truck-marker:hover {
+    transform: scale(1.15) translateY(-4px);
+    z-index: 1000 !important;
+}
+
+/* Marker Status Colors */
+.marker-green {
+    background-color: var(--status-green);
+    box-shadow: 0 0 16px rgba(40, 199, 111, 0.6);
+}
+
+.marker-yellow {
+    background-color: var(--status-yellow);
+    box-shadow: 0 0 16px rgba(255, 159, 67, 0.6);
+}
+
+.marker-red {
+    background-color: var(--status-red);
+    /* User requested subtle pulsing animation specifically for --status-red elements */
+    animation: pulse-red-marker 2s infinite ease-in-out;
+}
+
+/* Subtle Pulse Animation for Red Status Elements */
+@keyframes pulse-red-marker {
+    0% {
+        box-shadow: 0 0 0 0 rgba(234, 84, 85, 0.7);
+    }
+
+    50% {
+        box-shadow: 0 0 0 12px rgba(234, 84, 85, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(234, 84, 85, 0);
+    }
+}
+
+@keyframes pulse-green {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.5);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(40, 199, 111, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 199, 111, 0);
+    }
+}
+
+/* Leaflet Popup Styling Override (Dark theme matching) */
+.leaflet-popup-content-wrapper {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 30px var(--glass-shadow);
+}
+
+.leaflet-popup-tip {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+}
+
+.custom-tooltip {
+    min-width: 220px;
+}
+
+.custom-tooltip h3 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 8px;
+}
+
+.tooltip-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+}
+
+.tooltip-stat strong {
+    color: var(--text-primary);
+}
+
+.tooltip-factors {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--glass-border);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   7. Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .dashboard-panel {
+        position: fixed;
+        top: auto;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        width: auto;
+        max-height: 40vh;
+        /* Allow map to be seen on mobile */
+    }
+}
