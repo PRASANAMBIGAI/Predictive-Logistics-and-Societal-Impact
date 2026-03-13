@@ -15,9 +15,13 @@ if "%commit_msg%"=="" set commit_msg="Automated update"
 git commit -m "%commit_msg%"
 echo [2/3] Changes committed locally.
 
+:: Pull any remote changes first to prevent conflicts
+echo [3/4] Pulling any new changes from GitHub...
+git pull origin main
+
 :: Push to remote repository
 git push origin main
-echo [3/3] Changes pushed to GitHub successfully!
+echo [4/4] Changes pushed to GitHub successfully!
 
 echo ==========================================
 echo   Vercel will now automatically deploy!
